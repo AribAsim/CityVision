@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Space+Grotesk:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"error-container":"#ffdad6","inverse-primary":"#b6c4ff","primary-fixed-dim":"#b6c4ff","surface-tint":"#4059aa","tertiary":"#222a3e","on-surface-variant":"#444651","error":"#ba1a1a","on-primary-fixed":"#00164e","primary-container":"#1e3a8a","inverse-on-surface":"#eaf1ff","surface-container":"#e5eeff","secondary":"#0051d5","surface-container-low":"#eff4ff","on-primary-fixed-variant":"#264191","secondary-container":"#316bf3","background":"#f8f9ff","on-background":"#0b1c30","on-error":"#ffffff","secondary-fixed":"#dbe1ff","on-surface":"#0b1c30","outline-variant":"#c5c5d3","outline":"#757682","on-tertiary-fixed-variant":"#3f465c","on-secondary-fixed":"#00174b","surface-container-highest":"#d3e4fe","tertiary-container":"#384055","on-error-container":"#93000a","surface-container-high":"#dce9ff","on-tertiary-container":"#a4acc5","surface":"#f8f9ff","on-secondary":"#ffffff","on-tertiary-fixed":"#131b2e","surface-bright":"#f8f9ff","on-primary":"#ffffff","on-primary-container":"#90a8ff","primary-fixed":"#dce1ff","surface-variant":"#d3e4fe","surface-container-lowest":"#ffffff","tertiary-fixed":"#dae2fd","on-tertiary":"#ffffff","primary":"#00236f","surface-dim":"#cbdbf5","inverse-surface":"#213145","secondary-fixed-dim":"#b4c5ff","on-secondary-fixed-variant":"#003ea8","tertiary-fixed-dim":"#bec6e0","on-secondary-container":"#fefcff"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem",full:"9999px"},spacing:{"gutter":"1rem","space-xs":"0.25rem","space-md":"1rem","space-sm":"0.5rem","gutter-md":"1.25rem","margin-md":"1.5rem","space-xl":"2rem","margin":"1rem","gutter-lg":"1.5rem","margin-lg":"2rem","space-lg":"1.5rem"},fontFamily:{"body-lg":["Inter"],"headline-md":["Space Grotesk"],"label-sm":["JetBrains Mono"],"headline-lg":["Space Grotesk"],"headline-xl-mobile":["Space Grotesk"],"headline-xl":["Space Grotesk"],"label-md":["JetBrains Mono"],"body-md":["Inter"],"headline-sm":["Space Grotesk"],"body-sm":["Inter"],"headline-lg-mobile":["Space Grotesk"],"label-lg":["JetBrains Mono"]},fontSize:{"body-lg":["16px",{lineHeight:"24px",fontWeight:"400"}],"headline-md":["20px",{lineHeight:"28px",fontWeight:"600"}],"label-sm":["10px",{lineHeight:"14px",fontWeight:"500"}],"headline-lg":["28px",{lineHeight:"36px",fontWeight:"600"}],"headline-xl-mobile":["28px",{lineHeight:"36px",fontWeight:"700"}],"headline-xl":["36px",{lineHeight:"44px",fontWeight:"700"}],"label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],"body-md":["14px",{lineHeight:"20px",fontWeight:"400"}],"headline-sm":["16px",{lineHeight:"24px",fontWeight:"600"}],"body-sm":["12px",{lineHeight:"16px",fontWeight:"400"}],"headline-lg-mobile":["22px",{lineHeight:"28px",fontWeight:"600"}],"label-lg":["14px",{lineHeight:"20px",fontWeight:"500"}]}}}}</script></head><body class="bg-background font-body-md text-body-md text-on-background antialiased"><aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between"><div class="flex flex-col"><div class="h-16 px-gutter flex items-center gap-space-sm bg-surface-container-lowest"><img alt="City Vision Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WelADtS2KsS9AxmnEZ_xG6cqac_8mWFA0NWyCM_G35OQ6TgRfkIogs1WISljyybi8Cc__d0XwI1MgMylDO9hI9w7GHizHimO-LRIpTzrm7zWbO1m74Z5qoawm8Rvt1t6WTaTgzyhCB6ulYVnlIx9MpJbDYjbIfEpUN4SAfaFJMXQC9g5s1bI16t6Vk_K4JCzbQtOIbCWcCBQgFFGjdLBp5gqV1k4ytFFXAKMFKaacr-r40vpMd_sz5f_g"/><div class="flex flex-col min-w-0"><span class="font-headline-sm text-headline-sm text-primary tracking-tight font-bold leading-none truncate">CITY VISION</span><span class="font-label-sm text-label-sm text-on-surface-variant truncate tracking-tight">AI ROAD MONITORING</span></div></div><div class="px-gutter py-space-xs"><p class="font-body-sm text-body-sm text-on-surface-variant italic leading-snug">Every Bus a Sensor. Every Road a Safer Path.</p></div><div class="px-gutter pt-space-md"><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold">Operations Command</span></div><nav class="flex flex-col gap-space-xs px-space-sm mt-space-xs" data-active-classes="bg-primary-container text-on-primary font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.06)]"><a aria-current="page" class="flex items-center gap-space-sm px-gutter-md py-space-sm rounded-lg transition-colors bg-primary-container text-on-primary font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.06)]" data-path="home" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span class="font-body-md text-body-md">Home</span></a><a class="flex items-center gap-space-sm px-gutter-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="live-detection" href="#"><span class="material-symbols-outlined text-[20px]">videocam</span><span class="font-body-md text-body-md">Live Detection</span></a><a class="flex items-center gap-space-sm px-gutter-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="road-map" href="#"><span class="material-symbols-outlined text-[20px]">map</span><span class="font-body-md text-body-md">Road Map</span></a><a class="flex items-center gap-space-sm px-gutter-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="reports" href="#"><span class="material-symbols-outlined text-[20px]">assignment_late</span><span class="font-body-md text-body-md">Reports</span></a><a class="flex items-center gap-space-sm px-gutter-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="bus-fleet" href="#"><span class="material-symbols-outlined text-[20px]">directions_bus</span><span class="font-body-md text-body-md">Bus Fleet</span></a><a class="flex items-center gap-space-sm px-gutter-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="analytics" href="#"><span class="material-symbols-outlined text-[20px]">insights</span><span class="font-body-md text-body-md">Analytics</span></a><a class="flex items-center gap-space-sm px-gutter-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">tune</span><span class="font-body-md text-body-md">Settings</span></a></nav></div><div class="p-gutter bg-surface-container-low m-space-sm rounded-xl"><div class="flex items-center justify-between mb-space-xs"><span class="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">Telemetry Feed</span><span class="h-2 w-2 rounded-full bg-secondary animate-ping"></span></div><p class="font-label-sm text-label-sm text-on-surface font-mono">RT-STREAM // ACTIVE</p><p class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">24 vehicles syncing GIS and road health payloads in real-time.</p></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-gutter-lg"><div class="flex items-center gap-gutter"><div class="inline-flex items-center gap-space-xs px-gutter-md py-space-xs bg-surface-container-low rounded-full"><span class="h-2 w-2 rounded-full bg-secondary animate-pulse"></span><span class="font-label-sm text-label-sm text-on-surface font-mono tracking-tight">SYSTEM ONLINE | 24 Active Buses | Connected to Municipal Transit Grid</span></div><div class="hidden xl:flex items-center gap-space-xs bg-surface-container-low px-gutter-md py-space-xs rounded-lg w-72"><span class="material-symbols-outlined text-[18px] text-on-surface-variant">search</span><input class="bg-transparent border-none outline-none font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant w-full" placeholder="Search anomaly ID, route, vehicle..." type="text"/></div></div><div class="flex items-center gap-gutter"><div class="inline-flex items-center gap-space-xs px-gutter-md py-space-xs bg-secondary-container text-on-secondary-container rounded-full"><span class="material-symbols-outlined text-[14px]">smart_toy</span><span class="font-label-sm text-label-sm font-semibold tracking-wider uppercase">DEMO MODE: ON</span></div><button class="p-space-xs text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span></button><div class="flex items-center gap-space-sm pl-space-xs"><div class="flex flex-col text-right hidden md:block"><span class="font-headline-sm text-headline-sm text-on-surface leading-tight font-semibold">Transit Ops</span><span class="font-label-sm text-label-sm text-on-surface-variant leading-none uppercase">Municipal Admin</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-background min-h-screen px-gutter-lg py-gutter-lg"><div class="flex flex-col w-full gap-space-lg">
+<!-- Top Dossier Action Header -->
+<div class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-md pb-space-xs">
+<div class="flex flex-col gap-space-xs">
+<div class="inline-flex items-center gap-space-xs w-fit px-gutter-md py-space-xs rounded-full bg-surface-container-high text-primary">
+<span class="h-2 w-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-sm text-label-sm uppercase tracking-wider font-semibold">Municipal Audit Log // Cadastral Infrastructure Records</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight leading-tight">REPORTS &amp; WORK ORDER DISPATCH</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Official municipal triage log of AI-detected road anomalies across public bus transit corridors.</p>
+</div>
+<!-- Global Operations Dispatch CTA Group -->
+<div class="flex flex-wrap items-center gap-space-sm">
+<button class="inline-flex items-center gap-space-xs px-gutter-md py-space-sm rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-all shadow-sm font-label-md text-label-md" type="button">
+<span class="material-symbols-outlined text-[18px] text-secondary">sim_card_download</span>
+<span>Export CSV Dossier</span>
+</button>
+<button class="inline-flex items-center gap-space-xs px-gutter-md py-space-sm rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-all shadow-sm font-label-md text-label-md" type="button">
+<span class="material-symbols-outlined text-[18px] text-primary">picture_as_pdf</span>
+<span>Generate Work Order PDF</span>
+</button>
+<button class="inline-flex items-center gap-space-xs px-gutter-md py-space-sm rounded-lg bg-primary text-on-primary hover:bg-secondary transition-all shadow-md font-label-md text-label-md font-semibold" type="button">
+<span class="material-symbols-outlined text-[18px]">checklist</span>
+<span>Bulk Status Action</span>
+</button>
+</div>
+</div>
+<!-- KPI Metric Strip (5 Metric Cards) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-space-md">
+<!-- Card 1: Total Logged -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">Total Logged</span>
+<span class="p-space-xs rounded-lg bg-surface-container text-primary">
+<span class="material-symbols-outlined text-[18px]">rule_folder</span>
+</span>
+</div>
+<div class="mt-space-md">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold">128</span>
+<span class="font-label-sm text-label-sm text-secondary font-semibold">+14 this wk</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 mt-space-xs overflow-hidden">
+<div class="bg-secondary h-full rounded-full w-full"></div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant block mt-space-xs">Gross corridor payload stream</span>
+</div>
+</div>
+<!-- Card 2: Pending Triage -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">Pending Triage</span>
+<span class="px-space-xs py-0.5 rounded-full bg-amber-100 text-amber-900 font-label-sm text-label-sm font-semibold">Amber</span>
+</div>
+<div class="mt-space-md">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-amber-700 font-bold">52</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Avg wait: 4.2h</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 mt-space-xs overflow-hidden">
+<div class="bg-amber-500 h-full rounded-full" style="width: 40.6%"></div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant block mt-space-xs">Awaiting civil supervisor sign-off</span>
+</div>
+</div>
+<!-- Card 3: Dispatched -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">Dispatched / Active</span>
+<span class="px-space-xs py-0.5 rounded-full bg-blue-100 text-blue-900 font-label-sm text-label-sm font-semibold">Transit Blue</span>
+</div>
+<div class="mt-space-md">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-secondary font-bold">34</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">12 municipal crews</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 mt-space-xs overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 26.5%"></div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant block mt-space-xs">Field repair squads mobilized</span>
+</div>
+</div>
+<!-- Card 4: Resolved -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">Resolved / Patched</span>
+<span class="px-space-xs py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-label-sm text-label-sm font-semibold">59.3% Rate</span>
+</div>
+<div class="mt-space-md">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-emerald-700 font-bold">76</span>
+<span class="font-label-sm text-label-sm text-emerald-800 font-semibold">Verified Safe</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 mt-space-xs overflow-hidden">
+<div class="bg-emerald-600 h-full rounded-full" style="width: 59.3%"></div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant block mt-space-xs">Closed post-resurfacing audit</span>
+</div>
+</div>
+<!-- Card 5: Multi-Bus Confirmed -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">Cross-Bus Verified</span>
+<span class="p-space-xs rounded-lg bg-surface-container text-primary">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+</span>
+</div>
+<div class="mt-space-md">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-primary font-bold">41</span>
+<span class="font-label-sm text-label-sm text-secondary font-mono">98.4% conf.</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 mt-space-xs overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 98.4%"></div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant block mt-space-xs">Clustered by ≥2 transit units</span>
+</div>
+</div>
+</div>
+<!-- Search & Filter Controls Ribbon -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-md">
+<div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md">
+<!-- Search Input -->
+<div class="flex items-center gap-space-xs bg-surface-container-low px-gutter-md py-space-xs rounded-lg flex-1">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">search</span>
+<input class="bg-transparent border-none outline-none font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant w-full" id="reportSearch" placeholder="Search by Issue ID, road, corridor (e.g. NH-24, CV-00128)..." type="text" value="NH-24"/>
+</div>
+<!-- Status Filter Tabs -->
+<div class="flex items-center bg-surface-container-low p-1 rounded-lg gap-1 overflow-x-auto">
+<button class="px-space-md py-1.5 rounded-md font-label-md text-label-md font-semibold bg-surface-container-lowest text-primary shadow-sm whitespace-nowrap" type="button">All (128)</button>
+<button class="px-space-md py-1.5 rounded-md font-label-md text-label-md font-medium text-on-surface-variant hover:text-on-surface whitespace-nowrap" type="button">Pending (52)</button>
+<button class="px-space-md py-1.5 rounded-md font-label-md text-label-md font-medium text-on-surface-variant hover:text-on-surface whitespace-nowrap" type="button">In Progress (34)</button>
+<button class="px-space-md py-1.5 rounded-md font-label-md text-label-md font-medium text-on-surface-variant hover:text-on-surface whitespace-nowrap" type="button">Resolved (76)</button>
+</div>
+</div>
+<!-- Secondary Parameter Filter Row -->
+<div class="flex flex-wrap items-center gap-space-sm pt-space-xs">
+<!-- Severity Filter -->
+<div class="flex items-center gap-space-xs bg-surface-container-low px-gutter py-space-xs rounded-lg">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Severity:</span>
+<select class="bg-transparent border-none outline-none font-label-md text-label-md text-on-surface cursor-pointer">
+<option>All Severities</option>
+<option>Critical (Score &gt; 85)</option>
+<option>High (Score 70-84)</option>
+<option>Medium (Score 45-69)</option>
+<option>Low (Score &lt; 45)</option>
+</select>
+</div>
+<!-- Route Filter -->
+<div class="flex items-center gap-space-xs bg-surface-container-low px-gutter py-space-xs rounded-lg">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Route:</span>
+<select class="bg-transparent border-none outline-none font-label-md text-label-md text-on-surface cursor-pointer">
+<option>All Routes (12, 8, 5, 21)</option>
+<option>Route 12 (NH-24 Corridor)</option>
+<option>Route 8 (Outer Ring Expressway)</option>
+<option>Route 5 (Sector 62 Civic Link)</option>
+<option>Route 21 (MG Flyover Link)</option>
+</select>
+</div>
+<!-- Transit Bus Filter -->
+<div class="flex items-center gap-space-xs bg-surface-container-low px-gutter py-space-xs rounded-lg">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Vehicle Unit:</span>
+<select class="bg-transparent border-none outline-none font-label-md text-label-md text-on-surface cursor-pointer">
+<option>All Transit Buses</option>
+<option>CAM-01 (EV-Line)</option>
+<option>CAM-02 (Rapid-Transit)</option>
+<option>CAM-04 (Dual-Sensor)</option>
+<option>CAM-07 (Metropolitan)</option>
+<option>CAM-12 (Night-Patrol)</option>
+</select>
+</div>
+<!-- Date Range -->
+<div class="flex items-center gap-space-xs bg-surface-container-low px-gutter py-space-xs rounded-lg">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">calendar_today</span>
+<span class="font-label-md text-label-md text-on-surface font-mono">Today (Sep 12, 2026)</span>
+</div>
+<button class="ml-auto inline-flex items-center gap-1 text-on-surface-variant hover:text-error font-label-sm text-label-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">restart_alt</span>
+<span>Reset Filters</span>
+</button>
+</div>
+</div>
+<!-- Master-Detail Content Grid -->
+<div class="grid grid-cols-1 2xl:grid-cols-12 gap-space-lg items-start">
+<!-- Left: Rich Municipal Incident Dossier Table (8 Cols on 2xl) -->
+<div class="2xl:col-span-8 flex flex-col gap-space-sm bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<div class="p-space-md bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-primary">dynamic_feed</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold tracking-tight">Active Work Order Ingestion Stream</h2>
+</div>
+<div class="inline-flex items-center gap-space-xs">
+<span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono">CAD-LINK: ACTIVE SYNC</span>
+</div>
+</div>
+<!-- Data Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+<th class="py-space-sm px-gutter font-semibold">Incident Record &amp; Frame</th>
+<th class="py-space-sm px-gutter font-semibold">Defect Type</th>
+<th class="py-space-sm px-gutter font-semibold">Corridor &amp; GIS</th>
+<th class="py-space-sm px-gutter font-semibold">Bus Source</th>
+<th class="py-space-sm px-gutter font-semibold">Severity</th>
+<th class="py-space-sm px-gutter font-semibold">Status</th>
+<th class="py-space-sm px-gutter font-semibold text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y-0 text-on-surface">
+<!-- Row 1 (Active Highlighted) -->
+<tr class="bg-surface-container-low/70 hover:bg-surface-container-high transition-colors cursor-pointer group" onclick="selectRow('CV-00128')">
+<td class="py-space-sm px-gutter">
+<div class="flex items-center gap-space-sm">
+<div class="relative w-14 h-10 rounded overflow-hidden bg-surface-container flex-shrink-0 shadow-sm">
+<img class="w-full h-full object-cover" data-alt="High-resolution telephoto snapshot of a severe asphalt pothole on an urban highway with measuring overlays and bounding red safety indicators under bright morning sunlight." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8dipiD7mRvD5Xs5dWv6u12G9-ZyuulFNQAioF4VkbfQNOi1z12WrHF7WcRLO2m1I4SmjH9yWB3j6-qIDBT6KAYyZTFd0zhoIjCoMbK0Zat_IaBSHkQc6s9Y5cBwkZmj7-xS66goVhroBNSJYZDp0llU7KU9XJpGdzjvb3nyVkr-Id7V9wocT59-KxmJ-U7-YL17XCHT0-pwVR8cu8XOGfoZQil90RwmZor8NVj0j-YSY_QJOqs0LK"/>
+<div class="absolute inset-0 bg-primary/20 group-hover:opacity-0 transition-opacity"></div>
+<span class="absolute bottom-0 right-0 bg-primary text-on-primary font-label-sm text-[9px] px-1 font-mono">KF-14</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-primary font-bold font-mono">CV-00128</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-mono">10:24 AM</span>
+</div>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-on-surface">Pothole (Severe)</span>
+<span class="font-label-sm text-label-sm text-error font-mono">Depth 6.2cm • Area 1.4m²</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-on-surface font-medium">NH-24 (Pillar 142)</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono">28.6139°N, 77.2090°E</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Bus CAM-04 (R12)</span>
+<span class="inline-flex items-center gap-1 font-label-sm text-[10px] text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded w-fit">
+<span class="material-symbols-outlined text-[12px]">done_all</span> Multi-Bus (3)
+                  </span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col gap-1 w-24">
+<div class="flex items-center justify-between font-label-sm text-label-sm font-bold text-error">
+<span>CRITICAL</span>
+<span class="font-mono">92.5</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 overflow-hidden">
+<div class="bg-error h-full rounded-full" style="width: 92.5%"></div>
+</div>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 font-semibold">
+<span class="h-1.5 w-1.5 rounded-full bg-amber-600"></span> Pending
+                </span>
+</td>
+<td class="py-space-sm px-gutter text-right">
+<div class="inline-flex items-center gap-1">
+<button class="p-1.5 rounded bg-primary text-on-primary hover:bg-secondary transition-colors" title="Inspect Work Order" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors" title="View on GIS Map" type="button">
+<span class="material-symbols-outlined text-[16px]">pin_drop</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="selectRow('CV-00125')">
+<td class="py-space-sm px-gutter">
+<div class="flex items-center gap-space-sm">
+<div class="relative w-14 h-10 rounded overflow-hidden bg-surface-container flex-shrink-0 shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Road maintenance inspection camera footage showing deep transverse crack spanning across asphalt lane with digital telemetry indicators and yellow measurement overlay." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4r1PWeRWi7GhmB5mq-imetyGXXO-Baz4H0MTmaleEEtzGg71lgrWh4tFZZZa2HQvv2-7F6KZrUuymH5eVZrftVsofBhyjnjNqADP4TO7EIguk6CoW3HqNq3qDVT2H1me6uc8x8XE6SYlYBK9ZHHHAbxkfrRmOT8sIsEIraI3MR-QPkFXg5icTpv-su2X1mf8P5_cvZIDBntMxbo_ryut8AIpWJeXFy9EkQRpLxlCROk7vxoLyuEum"/>
+<span class="absolute bottom-0 right-0 bg-primary text-on-primary font-label-sm text-[9px] px-1 font-mono">KF-09</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold font-mono">CV-00125</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-mono">10:18 AM</span>
+</div>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-on-surface">Transverse Crack</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono">Length 3.8m • Gap 2.2cm</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-on-surface font-medium">Outer Ring Rd (Jct 4)</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono">28.5822°N, 77.2341°E</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Bus CAM-02 (R8)</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant font-mono">Single-Bus Sensor</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col gap-1 w-24">
+<div class="flex items-center justify-between font-label-sm text-label-sm font-bold text-amber-700">
+<span>HIGH</span>
+<span class="font-mono">78.0</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 overflow-hidden">
+<div class="bg-amber-600 h-full rounded-full" style="width: 78%"></div>
+</div>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-blue-100 text-blue-900 font-semibold">
+<span class="h-1.5 w-1.5 rounded-full bg-secondary"></span> Crew #4 Out
+                </span>
+</td>
+<td class="py-space-sm px-gutter text-right">
+<div class="inline-flex items-center gap-1">
+<button class="p-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">pin_drop</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="selectRow('CV-00119')">
+<td class="py-space-sm px-gutter">
+<div class="flex items-center gap-space-sm">
+<div class="relative w-14 h-10 rounded overflow-hidden bg-surface-container flex-shrink-0 shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Municipal roadway asphalt surface where a faded pedestrian speed breaker has suffered asphalt peeling and cracking, highlighted with green digital AI polygon markers." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAneyahOxWmI-nKobmKCwqWv2f2MVO5m128rOYn3ABBjRahTHpXI_Il_9GkVfZTUjAhlCBNLJ3VYbxshgLWdOhoTnXAq2-FAzwNIhi8Ej4EnpbBx-H90IpvGyk8Tw2Oy6MTeW7Eo2_gf4dZFN8aUHuKw5JitnjdnG1HkyxVgIC_y-y9jqJEBsXtd4QNmdPeCZpSUExPt-DGU8nPw77zwMzQuZ9EnBSZLP9JiD8WzbWEgUdQdwCVCgSG"/>
+<span class="absolute bottom-0 right-0 bg-primary text-on-primary font-label-sm text-[9px] px-1 font-mono">KF-02</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold font-mono">CV-00119</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-mono">09:40 AM</span>
+</div>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-on-surface">Speed Bump Disrepair</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono">Striping Deficit 40%</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-on-surface font-medium">Sec 62 Commercial Ave</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono">28.6280°N, 77.3649°E</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Bus CAM-08 (R5)</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant font-mono">Routine Ingestion</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col gap-1 w-24">
+<div class="flex items-center justify-between font-label-sm text-label-sm font-bold text-emerald-700">
+<span>LOW</span>
+<span class="font-mono">32.0</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 overflow-hidden">
+<div class="bg-emerald-600 h-full rounded-full" style="width: 32%"></div>
+</div>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-900 font-semibold">
+<span class="material-symbols-outlined text-[14px] text-emerald-700">check_circle</span> Resolved
+                </span>
+</td>
+<td class="py-space-sm px-gutter text-right">
+<div class="inline-flex items-center gap-1">
+<button class="p-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">pin_drop</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="selectRow('CV-00114')">
+<td class="py-space-sm px-gutter">
+<div class="flex items-center gap-space-sm">
+<div class="relative w-14 h-10 rounded overflow-hidden bg-surface-container flex-shrink-0 shadow-sm">
+<img class="w-full h-full object-cover" data-alt="High quality street view camera capturing longitudinal stress cracks running parallel to road median with AI optical analysis HUD overlays." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRudJE4O8itck_R8oF5-iL2JJW4j25GH9yKro2z89HtBwpde3GQ54uSXW_DPO74EY6Fn-fR2MpkW5r2jBUeWpvaWv4sD85gQJgfaklj13DMnxhP1pEmwBu7nS68avKG_AK7cweeDDuhOs0IqFIM4OOXMMAvNX-UygS9kiLpgiko16QBxI1xIerhqID7wUhDAOB0NrFKcIvcc0Vl6YFAakgi4ytK58IBACyPS-GPIEBJhQRNSSGDkCP"/>
+<span class="absolute bottom-0 right-0 bg-primary text-on-primary font-label-sm text-[9px] px-1 font-mono">KF-18</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold font-mono">CV-00114</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-mono">09:12 AM</span>
+</div>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-on-surface">Longitudinal Crack</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono">Span 5.1m • Mild Spall</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-on-surface font-medium">MG Road Flyover</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono">28.4812°N, 77.0891°E</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Bus CAM-01 (R21)</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant font-mono">EV Corridor Unit</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col gap-1 w-24">
+<div class="flex items-center justify-between font-label-sm text-label-sm font-bold text-amber-600">
+<span>MEDIUM</span>
+<span class="font-mono">58.4</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 overflow-hidden">
+<div class="bg-amber-500 h-full rounded-full" style="width: 58.4%"></div>
+</div>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-blue-100 text-blue-900 font-semibold">
+<span class="h-1.5 w-1.5 rounded-full bg-secondary"></span> In Progress
+                </span>
+</td>
+<td class="py-space-sm px-gutter text-right">
+<div class="inline-flex items-center gap-1">
+<button class="p-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">pin_drop</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="selectRow('CV-00109')">
+<td class="py-space-sm px-gutter">
+<div class="flex items-center gap-space-sm">
+<div class="relative w-14 h-10 rounded overflow-hidden bg-surface-container flex-shrink-0 shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Dense cluster of multiple dangerous asphalt craters along high speed bus lane with red highlighted perimeter detections and spatial alert graphics." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqfmsbAa7sbCsDmXEQNCYvOQqZneBJcZ9KREgNyaK0exRQoqL2xKI_ew5IotnPsQsbIG-kmaEbNNHiZBHr-e_MJMwApmqY7g8jmqHsyE_g8L0ol88B4r3xJEVkxyE8bXNkJKjRkRnUa4DrLJ3C7DwTNFTsjDCL0Pzl2f3yPNEtnwDrgPzL1Q_RYlukwKLzMMH_91kxLqCWb7kYSLf-17uaWkxB2tGEX7bAJij8SrCezjAcbpzK_ajH"/>
+<span class="absolute bottom-0 right-0 bg-primary text-on-primary font-label-sm text-[9px] px-1 font-mono">KF-07</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold font-mono">CV-00109</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-mono">08:45 AM</span>
+</div>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-on-surface">Deep Pothole Cluster</span>
+<span class="font-label-sm text-label-sm text-error font-mono">3 Depressions • Sub-base</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-on-surface font-medium">Vikas Marg Corridor</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono">28.6310°N, 77.2798°E</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col gap-0.5">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Bus CAM-12 (R12)</span>
+<span class="inline-flex items-center gap-1 font-label-sm text-[10px] text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded w-fit">
+<span class="material-symbols-outlined text-[12px]">done_all</span> Multi-Bus (2)
+                  </span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col gap-1 w-24">
+<div class="flex items-center justify-between font-label-sm text-label-sm font-bold text-error">
+<span>CRITICAL</span>
+<span class="font-mono">89.2</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 overflow-hidden">
+<div class="bg-error h-full rounded-full" style="width: 89.2%"></div>
+</div>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 font-semibold">
+<span class="h-1.5 w-1.5 rounded-full bg-amber-600"></span> Pending
+                </span>
+</td>
+<td class="py-space-sm px-gutter text-right">
+<div class="inline-flex items-center gap-1">
+<button class="p-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">pin_drop</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 6 -->
+<tr class="hover:bg-surface-container-low transition-colors cursor-pointer group" onclick="selectRow('CV-00098')">
+<td class="py-space-sm px-gutter">
+<div class="flex items-center gap-space-sm">
+<div class="relative w-14 h-10 rounded overflow-hidden bg-surface-container flex-shrink-0 shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Iron municipal manhole cover collapsed 5 centimeters into the asphalt transit lane on a busy city avenue with AI detection bounding contours." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAiJ-LI-FpS4boUzQnJjXj4PMh1yIFk-zOFarg6LvlBudARcJ03BC5HuEdgNDDVV8PUyTx7_9qjUZERhlkqAfyl6O4Hivi66NwS7NUZ1PcMBDGn73MtJ_eZIR327SFsq0bV6YQvxcCHhEAIMay1PdT7aSgcBVyySQDtFOtRz8yIp2a7h5GqszD0WoeM9UQeG_JcCqahriBHe19oTn-8h1jHWZWXSauxYE_p97C0emHKcWxKTXZ1_Qt"/>
+<span class="absolute bottom-0 right-0 bg-primary text-on-primary font-label-sm text-[9px] px-1 font-mono">KF-31</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold font-mono">CV-00098</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-mono">07:30 AM</span>
+</div>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-on-surface">Manhole Subsidence</span>
+<span class="font-label-sm text-label-sm text-amber-800 font-mono">Drop 5.4cm • Rim Shift</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-on-surface font-medium">Lodhi Rd Transit Lane</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono">28.5918°N, 77.2280°E</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Bus CAM-07 (R8)</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant font-mono">Morning Telemetry</span>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<div class="flex flex-col gap-1 w-24">
+<div class="flex items-center justify-between font-label-sm text-label-sm font-bold text-amber-700">
+<span>HIGH</span>
+<span class="font-mono">74.1</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 overflow-hidden">
+<div class="bg-amber-600 h-full rounded-full" style="width: 74.1%"></div>
+</div>
+</div>
+</td>
+<td class="py-space-sm px-gutter">
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-900 font-semibold">
+<span class="material-symbols-outlined text-[14px] text-emerald-700">check_circle</span> Resolved
+                </span>
+</td>
+<td class="py-space-sm px-gutter text-right">
+<div class="inline-flex items-center gap-1">
+<button class="p-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">pin_drop</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Strip -->
+<div class="p-space-md bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-md">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Showing <span class="font-semibold text-on-surface font-mono">1 - 6</span> of <span class="font-semibold text-on-surface font-mono">128</span> records</span>
+<div class="flex items-center gap-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Rows:</span>
+<select class="bg-surface-container-lowest text-on-surface font-label-sm text-label-sm px-2 py-1 rounded">
+<option>6</option>
+<option>15</option>
+<option>50</option>
+<option>100</option>
+</select>
+</div>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="font-label-sm text-label-sm text-on-surface-variant mr-space-xs">Page 1 of 22</span>
+<button class="p-1.5 rounded bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-40" disabled="" type="button">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<button class="px-3 py-1 rounded bg-primary text-on-primary font-label-sm text-label-sm font-semibold" type="button">1</button>
+<button class="px-3 py-1 rounded bg-surface-container-lowest text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm" type="button">2</button>
+<button class="px-3 py-1 rounded bg-surface-container-lowest text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm" type="button">3</button>
+<button class="p-1.5 rounded bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Right: Detailed Municipal Incident Inspection Drawer (4 Cols on 2xl) -->
+<div class="2xl:col-span-4 flex flex-col gap-space-md bg-surface-container-lowest rounded-xl p-space-lg shadow-sm">
+<!-- Detail Header -->
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-primary font-bold font-mono">CV-00128</span>
+<span class="px-2 py-0.5 rounded-full bg-error text-on-error font-label-sm text-label-sm font-semibold uppercase">Critical</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono">TIMESTAMP: 2026-09-12T10:24:18Z</span>
+</div>
+<div class="inline-flex items-center gap-1">
+<button class="p-1.5 rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface transition-colors" title="Print Dossier" type="button">
+<span class="material-symbols-outlined text-[18px]">print</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface transition-colors" title="Audit History" type="button">
+<span class="material-symbols-outlined text-[18px]">history</span>
+</button>
+</div>
+</div>
+<!-- AI Telemetry HUD Image Viewport -->
+<div class="relative w-full aspect-video rounded-lg overflow-hidden bg-surface-container-highest shadow-inner">
+<img class="w-full h-full object-cover" data-alt="High angle municipal road camera feed capturing road pothole with digital AI computer vision bounding boxes, confidence score 98.4 percent, GPS tag 28.6139N 77.2090E, and depth measurement overlay in vivid cyan and red accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUBysUWDsoLT95ZDauYEDUOnmB1H4XG8N2EIeItJpsbrEq5zzopI_FhIuuwRVCXomVIXEkEKdl8-VuRK_ixhGha-2x4usKGDtjdM2iuFvhUiCK8gruRdh_eS4SoZAXdl7XkA60oRUP3TL8-uHN-5wmBsHHt3DhUAZ7dpdjIqNJJORi5qUWkAQeM-n9FEtwDu3c8drgsRarH3E4RM7_ewrVyvR7wmbGG2OUpeqecv0v8KceExVsmVWU"/>
+<!-- Artificial HUD Overlay Elements -->
+<div class="absolute top-2 left-2 flex items-center gap-1.5 bg-primary/90 text-on-primary px-2.5 py-1 rounded text-[11px] font-mono tracking-tight shadow">
+<span class="h-2 w-2 rounded-full bg-secondary animate-pulse"></span>
+<span>CAM-04 // OPTICAL-INFERENCE // 4K 60FPS</span>
+</div>
+<div class="absolute bottom-2 left-2 right-2 bg-slate-900/85 text-white p-2 rounded flex items-center justify-between text-[11px] font-mono backdrop-blur-sm">
+<div>
+<span class="text-blue-300">GPS:</span> 28.6139°N, 77.2090°E
+          </div>
+<div>
+<span class="text-blue-300">HEADING:</span> 084° ENE (42 km/h)
+          </div>
+<div>
+<span class="text-amber-400">DEPTH:</span> 6.2cm
+          </div>
+</div>
+</div>
+<!-- Multi-Bus Verification Telemetry Well -->
+<div class="bg-surface-container-low p-space-md rounded-lg flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[18px] text-primary">sensors</span>
+<span class="font-headline-sm text-body-md font-bold text-on-surface">Cross-Bus Fleet Consensus</span>
+</div>
+<span class="font-label-sm text-label-sm font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">3 Bus Confirmations</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+          Spatial clustering confirmed within 0.8m radius. Optical disparity validation rules out surface water or shadow artifacts with 98.4% certainty.
+        </p>
+<!-- Mini Bus Verification List -->
+<div class="grid grid-cols-3 gap-space-xs mt-space-xs">
+<div class="bg-surface-container-lowest p-2 rounded text-center shadow-sm">
+<span class="font-label-sm text-[11px] text-primary font-bold block font-mono">CAM-04 (R12)</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant font-mono">10:24 AM • 98%</span>
+</div>
+<div class="bg-surface-container-lowest p-2 rounded text-center shadow-sm">
+<span class="font-label-sm text-[11px] text-primary font-bold block font-mono">CAM-07 (R8)</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant font-mono">09:58 AM • 96%</span>
+</div>
+<div class="bg-surface-container-lowest p-2 rounded text-center shadow-sm">
+<span class="font-label-sm text-[11px] text-primary font-bold block font-mono">CAM-12 (R12)</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant font-mono">08:44 AM • 99%</span>
+</div>
+</div>
+</div>
+<!-- Severity & PCI Impact Breakdown -->
+<div class="bg-surface-container-lowest flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">Priority Severity Index (PCI Impact)</span>
+<span class="font-headline-sm text-headline-sm text-error font-bold font-mono">92.5 / 100</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-2 overflow-hidden">
+<div class="bg-error h-full rounded-full" style="width: 92.5%"></div>
+</div>
+<div class="flex justify-between text-[11px] font-mono text-on-surface-variant mt-1">
+<span>Structural: <strong class="text-on-surface">Critical</strong></span>
+<span>Transit Delay: <strong class="text-on-surface">+3.2 min</strong></span>
+<span>Axle Shock: <strong class="text-error">High (2.8G)</strong></span>
+</div>
+</div>
+<!-- Work Order Dispatch Form Container -->
+<div class="bg-surface-container-low p-space-md rounded-lg flex flex-col gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[18px] text-primary">engineering</span>
+<span class="font-headline-sm text-body-md font-bold text-on-surface">Municipal Dispatch Configuration</span>
+</div>
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase">Assigned Contractor / Division</label>
+<select class="bg-surface-container-lowest text-on-surface font-body-sm text-body-sm px-gutter-md py-2 rounded-lg outline-none cursor-pointer">
+<option selected="">PWD Central Division - Rapid Asphalt Unit 2</option>
+<option>Road Maintenance Unit 3 (East Expressway)</option>
+<option>Municipal Flyover &amp; Bridges Wing</option>
+<option>Apex Infrastructure Contractors Ltd.</option>
+</select>
+</div>
+<div class="grid grid-cols-2 gap-space-sm">
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase">Target SLA</label>
+<input class="bg-surface-container-lowest text-on-surface font-label-md text-label-md px-gutter py-2 rounded-lg outline-none font-mono" readonly="" type="text" value="Under 12 Hours (High Priority)"/>
+</div>
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase">Material Type</label>
+<input class="bg-surface-container-lowest text-on-surface font-label-md text-label-md px-gutter py-2 rounded-lg outline-none font-mono" readonly="" type="text" value="Cold-Mix Polymer Bitumen"/>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase">Dispatcher Notes / Field Warning</label>
+<textarea class="bg-surface-container-lowest text-on-surface font-body-sm text-body-sm p-space-sm rounded-lg outline-none resize-none" placeholder="Add special instructions for traffic diversion or heavy equipment..." rows="2">Urgent: Right-hand transit lane. Recommended overnight closure or rapid cold-patch deployment during off-peak window.</textarea>
+</div>
+</div>
+<!-- Action Transition Buttons -->
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<button class="w-full py-2.5 px-space-md rounded-lg bg-primary hover:bg-secondary text-on-primary font-headline-sm text-headline-sm font-semibold transition-all shadow-md flex items-center justify-center gap-space-xs" type="button">
+<span class="material-symbols-outlined text-[20px]">send_time_extension</span>
+<span>Dispatch Work Order &amp; Mobilize Crew</span>
+</button>
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="py-2 px-space-sm rounded-lg bg-surface-container text-primary hover:bg-surface-container-high font-label-md text-label-md font-semibold transition-colors flex items-center justify-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+<span>Mark Verified</span>
+</button>
+<button class="py-2 px-space-sm rounded-lg bg-surface-container text-error hover:bg-error-container font-label-md text-label-md font-semibold transition-colors flex items-center justify-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">cancel</span>
+<span>Flag False Positive</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  function selectRow(issueId) {
+    // Interactive micro-interaction for row inspection
+    const rows = document.querySelectorAll('tbody tr');
+    rows.forEach(r => {
+      r.classList.remove('bg-surface-container-low/70');
+      r.classList.add('hover:bg-surface-container-low');
+    });
+    event.currentTarget.classList.add('bg-surface-container-low/70');
+  }
+</script></main></div></body></html>

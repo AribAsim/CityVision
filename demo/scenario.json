@@ -1,0 +1,23 @@
+{
+  "api_base_url": "http://localhost:8000/api",
+  "anomaly_type": "Pothole",
+  "base_confidence": 0.87,
+  "base_severity": "High",
+  "base_priority_score": 76,
+  "route_id": "ROUTE-RED",
+  "bus_1": {
+    "id": "BUS-01",
+    "speed": 34.5,
+    "latitude": 28.63450,
+    "longitude": 77.22175,
+    "pause_after_sec": 8
+  },
+  "bus_2": {
+    "id": "BUS-02",
+    "speed": 38.2,
+    "latitude": 28.63455,
+    "longitude": 77.22180,
+    "pause_after_sec": 4
+  },
+  "auto_advance_delay_sec": 2
+}
