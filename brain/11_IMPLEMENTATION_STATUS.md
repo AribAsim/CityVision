@@ -230,7 +230,22 @@ python -m edge.runner --bus BUS-01 --video "WhatsApp Video 2026-09-11 at 10.40.3
 
 ---
 
-## 5. Future Scope (Post-MVP Roadmap)
+## 5. Repository Publication & Git Hygiene
+
+- **Remote Target**: `https://github.com/AribAsim/CityVision` (branch `main`).
+- **History Cleaned**: Initialized fresh repository history with no prior clone history or corrupted packfile references.
+- **Git Exclusions Configured (`.gitignore`)**:
+  - Excluded all heavy video media (`*.mp4`, `demovideo.mp4`, `WhatsApp Video*.mp4`).
+  - Excluded compressed archives (`stitch_city_vision_road_monitor.zip`).
+  - Excluded temporary clones (`temp_clone/`), scratch scripts (`scratch/`), and test logs (`tests.txt`).
+  - Excluded runtime databases (`*.db`, `*.sqlite`, `backend/road_anomalies.db`, `sih26124.db`).
+  - Excluded generated runtime evidence, uploads, audit crops, and static snapshot images while maintaining directory stubs with `.gitkeep`.
+  - Excluded virtual environments (`venv/`), `node_modules/`, and frontend build distributions (`dist/`).
+  - Preserved canonical YOLOv8 weights (`RoadDetectionModel/.../weights/best.pt`) and all source modules across edge, backend, and frontend.
+
+---
+
+## 6. Future Scope (Post-MVP Roadmap)
 
 1. **Edge Hardware Integration**: Deploy the edge runner as an optimized ONNX/TensorRT container on Raspberry Pi 5 or NVIDIA Jetson Orin Nano with physical USB cameras and GPS/IMU modules.
 2. **MQTT Telemetry Broker**: Implement lightweight MQTT pub/sub messaging for low-bandwidth cellular transmission from buses to city servers.
@@ -238,3 +253,4 @@ python -m edge.runner --bus BUS-01 --video "WhatsApp Video 2026-09-11 at 10.40.3
 4. **Automated Work-Order Routing**: Connect the resolution lifecycle to municipal PWD depot ticketing systems (SAP, IBM Maximo, or municipal civic complaint portals).
 5. **Citizen Crowdsourcing Fusion**: Correlate mobile sensing transit detections with citizen mobile app complaint reports to cross-validate citizen grievances automatically.
 6. **Predictive Degradation AI**: Use time-series observation depth to model road surface deterioration rates before catastrophic pothole formation.
+
