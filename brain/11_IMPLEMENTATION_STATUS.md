@@ -242,8 +242,15 @@ python -m edge.runner --bus BUS-01 --video "WhatsApp Video 2026-09-11 at 10.40.3
   - Excluded generated runtime evidence, uploads, audit crops, and static snapshot images while maintaining directory stubs with `.gitkeep`.
   - Excluded virtual environments (`venv/`), `node_modules/`, and frontend build distributions (`dist/`).
   - Preserved canonical YOLOv8 weights (`RoadDetectionModel/.../weights/best.pt`) and all source modules across edge, backend, and frontend.
+- **Documentation Overhaul (`README.md`)**: Replaced legacy single-script documentation with a comprehensive, professional README aligned with open-source and hackathon evaluation best practices:
+  - Added architectural overview, system flow diagrams, and feature breakdowns across edge, backend, and frontend tiers.
+  - Documented the custom YOLOv8m test benchmarks (mAP@0.5: 0.745), Kalman tracking, and post-track trajectory stitcher.
+  - Added copy-pasteable local setup guides, demo instructions, and edge CLI runner examples.
+  - Documented the 60-test automated verification suite and complete REST API reference table.
+  - Linked all architecture governance specifications in `/brain`.
 
 ---
+
 
 ## 6. Future Scope (Post-MVP Roadmap)
 
