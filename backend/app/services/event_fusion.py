@@ -90,6 +90,7 @@ def fuse_edge_event(
     )
 
     if matched_incident:
+        target_incident = matched_incident
         # Check rapid spam from the same bus
         is_spam = is_rapid_duplicate_observation(
             db=db,
@@ -101,14 +102,22 @@ def fuse_edge_event(
 
         if not is_spam:
             # Register new observation
+            bind = db.get_bind()
+            geom_val = None
+            if bind and bind.dialect.name == "postgresql":
+                from geoalchemy2.functions import ST_SetSRID, ST_MakePoint
+                geom_val = ST_SetSRID(ST_MakePoint(event_data.longitude, event_data.latitude), 4326)
+
             obs = models.Observation(
                 incident_id=matched_incident.id,
                 edge_event_id=edge_id,
+                message_id=event_data.message_id,
                 bus_id=event_data.bus_id,
                 route_id=event_data.route_id,
                 timestamp=now,
                 latitude=event_data.latitude,
                 longitude=event_data.longitude,
+                geom=geom_val,
                 speed_kmh=event_data.speed_kmh or 0.0,
                 confidence=event_data.confidence,
                 image_url=final_image_url
@@ -131,6 +140,9 @@ def fuse_edge_event(
             n = matched_incident.confirmation_count
             matched_incident.latitude = ((matched_incident.latitude * (n - 1)) + event_data.latitude) / n
             matched_incident.longitude = ((matched_incident.longitude * (n - 1)) + event_data.longitude) / n
+            if bind and bind.dialect.name == "postgresql":
+                from geoalchemy2.functions import ST_SetSRID, ST_MakePoint
+                matched_incident.geom = ST_SetSRID(ST_MakePoint(matched_incident.longitude, matched_incident.latitude), 4326)
             matched_incident.last_detected_at = now
 
             if final_image_url and not matched_incident.primary_image_url:
@@ -175,6 +187,12 @@ def fuse_edge_event(
         )
         base_prio = int(round(float(raw_prio)))
 
+        bind = db.get_bind()
+        geom_val = None
+        if bind and bind.dialect.name == "postgresql":
+            from geoalchemy2.functions import ST_SetSRID, ST_MakePoint
+            geom_val = ST_SetSRID(ST_MakePoint(event_data.longitude, event_data.latitude), 4326)
+
         new_incident = models.Incident(
             incident_id=inc_id,
             anomaly_type=event_data.anomaly_type,
@@ -183,6 +201,7 @@ def fuse_edge_event(
             status="NEW",
             latitude=event_data.latitude,
             longitude=event_data.longitude,
+            geom=geom_val,
             first_detected_at=now,
             last_detected_at=now,
             confirmation_count=1,
@@ -206,17 +225,51 @@ def fuse_edge_event(
         obs = models.Observation(
             incident_id=new_incident.id,
             edge_event_id=edge_id,
+            message_id=event_data.message_id,
             bus_id=event_data.bus_id,
             route_id=event_data.route_id,
             timestamp=now,
             latitude=event_data.latitude,
             longitude=event_data.longitude,
+            geom=geom_val,
             speed_kmh=event_data.speed_kmh or 0.0,
             confidence=event_data.confidence,
             image_url=final_image_url
         )
         db.add(obs)
         target_incident = new_incident
+
+    # Persist optional v2 perception data (PlateRead & InfraObservation)
+    if event_data.nearby_plates:
+        for p in event_data.nearby_plates:
+            plate_entry = models.PlateRead(
+                incident_id=target_incident.id,
+                edge_event_id=edge_id,
+                bus_id=event_data.bus_id,
+                route_id=event_data.route_id,
+                timestamp=now,
+                latitude=event_data.latitude,
+                longitude=event_data.longitude,
+                plate_text=str(p.get("plate_text", "")),
+                plate_confidence=float(p.get("plate_confidence", 0.0)),
+                ocr_confidence=float(p.get("ocr_confidence", 0.0)),
+                image_url=final_image_url,
+            )
+            db.add(plate_entry)
+
+    if event_data.nearby_signs:
+        for s in event_data.nearby_signs:
+            infra_entry = models.InfraObservation(
+                sign_type=str(s.get("sign_type", s.get("class_name", "unknown"))),
+                confidence=float(s.get("confidence", 0.0)),
+                bus_id=event_data.bus_id,
+                route_id=event_data.route_id,
+                timestamp=now,
+                latitude=event_data.latitude,
+                longitude=event_data.longitude,
+                image_url=final_image_url,
+            )
+            db.add(infra_entry)
 
     # Update bus telemetry
     update_bus_telemetry(db, event_data.bus_id, event_data.route_id, event_data.latitude, event_data.longitude)

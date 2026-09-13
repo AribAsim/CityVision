@@ -74,3 +74,28 @@ def update_incident_status(
         return updated
     except ValueError as val_err:
         raise HTTPException(status_code=400, detail=str(val_err))
+
+
+@router.get("/{incident_id}/report.pdf")
+def get_incident_pdf_report(incident_id: str, db: Session = Depends(get_db)):
+    """Generate and return a formal Municipal Work Order PDF for this incident."""
+    from fastapi.responses import Response
+    from ..services.pdf_report import generate_incident_pdf
+
+    incident = (
+        db.query(models.Incident)
+        .filter(
+            (models.Incident.incident_id == incident_id) |
+            (models.Incident.id == int(incident_id) if incident_id.isdigit() else False)
+        )
+        .first()
+    )
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    pdf_bytes = generate_incident_pdf(incident)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=WorkOrder_{incident.incident_id}.pdf"},
+    )

@@ -87,3 +87,12 @@ secrets.toml
 .idea/
 .DS_Store
 Thumbs.db
+
+# Legacy Prototype & Dev-Only Files (not part of deployable MVP)
+interface-app/
+stitch_city_vision_road_monitor/
+train.ipynb
+do this setup.md
+web interface.md
+packages.txt
+Full-Scope-Phased-Implementation-Plan.md

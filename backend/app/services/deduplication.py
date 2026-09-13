@@ -2,6 +2,7 @@ import math
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 from sqlalchemy.orm import Session
+import geoalchemy2
 from .. import models
 
 
@@ -27,8 +28,32 @@ def find_matching_incident(
 ) -> Optional[models.Incident]:
     """
     Find existing open (non-RESOLVED) incident within radius_meters with the same anomaly_type.
+    Uses PostGIS ST_DWithin if PostgreSQL dialect is detected and geom is available,
+    otherwise uses pure Haversine distance.
     Returns the nearest matching Incident or None.
     """
+    bind = db.get_bind()
+    if bind and bind.dialect.name == "postgresql":
+        try:
+            from geoalchemy2.functions import ST_DWithin, ST_SetSRID, ST_MakePoint, ST_Distance
+            point = ST_SetSRID(ST_MakePoint(lon, lat), 4326)
+            # PostGIS ST_DWithin on geography/geometry (cast to geography for meter accuracy)
+            match = (
+                db.query(models.Incident)
+                .filter(
+                    models.Incident.anomaly_type == anomaly_type,
+                    models.Incident.status != "RESOLVED",
+                    ST_DWithin(models.Incident.geom.cast(geoalchemy2.Geography), point.cast(geoalchemy2.Geography), radius_meters)
+                )
+                .order_by(ST_Distance(models.Incident.geom.cast(geoalchemy2.Geography), point.cast(geoalchemy2.Geography)))
+                .first()
+            )
+            if match:
+                return match
+        except Exception as e:
+            # Fall back to Haversine if PostGIS functions fail or geom is null
+            pass
+
     open_incidents = (
         db.query(models.Incident)
         .filter(

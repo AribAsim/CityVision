@@ -1,4 +1,4 @@
-# CityVision — Mobile Urban Sensing & Road Anomaly Monitoring Platform
+﻿# CityVision — Mobile Urban Sensing & Road Anomaly Monitoring Platform
 
 > *"Every Bus a Sensor. Every Road a Safer Path."*
 
@@ -8,194 +8,239 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-00FFFF.svg)](https://github.com/ultralytics/ultralytics)
 [![Leaflet](https://img.shields.io/badge/Leaflet-GIS%20Mapping-199900.svg?logo=leaflet&logoColor=white)](https://leafletjs.com/)
+[![Tests](https://img.shields.io/badge/tests-78%20passing-brightgreen.svg)](#-automated-testing)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**CityVision** (Smart India Hackathon SIH26124) transforms routine public municipal transit buses into intelligent, mobile urban sensing units. By mounting dashcam sensors on public bus fleets, CityVision continuously detects road surface anomalies (potholes, severe cracks, speed bumps), tags them with live GPS and telemetry, cross-correlates multi-bus observations to eliminate false positives, and escalates verified road hazards directly to municipal public works command centers.
+**CityVision** (Smart India Hackathon — Problem Statement SIH26124) transforms routine public transit buses into intelligent, mobile urban sensing units. Dashcam sensors mounted on public buses continuously detect road surface anomalies (potholes, cracks, speed bumps), vehicle license plates, and traffic infrastructure signs, then GPS-tag, cross-correlate, and escalate verified road hazards to a municipal command center — automatically.
 
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
-- [Executive Summary](#-executive-summary)
-- [System Architecture](#-system-architecture)
-- [Key Features](#-key-features)
-- [Repository Structure](#-repository-structure)
-- [Machine Learning & Model Evaluation](#-machine-learning--model-evaluation)
-- [Quick Start Guide](#-quick-start-guide)
-  - [1. Backend Setup](#1-backend-setup)
-  - [2. Frontend Setup](#2-frontend-setup)
-  - [3. Running the Live Demo](#3-running-the-live-demo)
-  - [4. Processing a Video Scan](#4-processing-a-video-scan)
-- [Automated Testing](#-automated-testing)
-- [REST API Reference](#-rest-api-reference)
-- [Architecture & Governance Docs (`/brain`)](#-architecture--governance-docs-brain)
-- [License](#-license)
+- [What CityVision Does](#what-cityvision-does)
+- [System Architecture](#system-architecture)
+- [Key Features](#key-features)
+- [Repository Structure](#repository-structure)
+- [Machine Learning Models](#machine-learning-models)
+- [Quick Start Guide](#quick-start-guide-for-beginners)
+- [Edge CLI Runner](#edge-cli-runner)
+- [Automated Testing](#automated-testing)
+- [REST API Reference](#rest-api-reference)
+- [Architecture and Governance Docs](#architecture-and-governance-docs)
+- [License](#license)
 
 ---
 
-## 🏙️ Executive Summary
+## What CityVision Does
 
-Traditional road maintenance relies on sporadic, expensive physical road surveys or slow-moving citizen grievance queues. **CityVision** replaces this reactive model with **continuous, passive, multi-vehicle verified sensing**:
+Traditional road maintenance relies on expensive physical surveys or slow citizen grievance queues. **CityVision replaces this reactive model** with continuous, automated, multi-vehicle sensing:
 
-1. **Passive Edge Capture**: City buses traverse regular scheduled routes while edge intelligence models analyze live dashcam footage in real time.
-2. **Physical Anomaly Tracking**: Uses Kalman filtering (`supervision.ByteTrack`) coupled with a post-track trajectory stitcher to collapse hundreds of frame detections into a single, cohesive defect identity.
-3. **Multi-Bus Spatial Consensus**: Multiple buses passing the same geographic coordinate ($\le 15\text{ m}$) automatically corroborate observations, elevating incident confidence and escalating severity from `NEW` to `VERIFIED`.
-4. **Command Center Operations**: Municipal civil engineers prioritize repair backlogs via dynamic risk-scoring algorithms, interactive Leaflet GIS maps, and audited lifecycle state machines (`NEW` $\to$ `VERIFIED` $\to$ `ASSIGNED` $\to$ `IN_PROGRESS` $\to$ `RESOLVED`).
+1. **Passive Edge Capture** — City buses traverse scheduled routes while AI models analyze dashcam footage in real time.
+2. **Physical Anomaly Tracking** — Kalman filtering (ByteTrack) + a post-track trajectory stitcher collapse hundreds of frame detections into a single cohesive defect identity.
+3. **ANPR and Traffic Infrastructure Detection** — Concurrently detects Indian license plates via EasyOCR + YOLOv8n, and traffic signs via YOLOv8s, persisting them alongside each road anomaly event.
+4. **Multi-Bus Spatial Consensus** — Multiple buses passing the same GPS coordinate (<=15 m) automatically corroborate observations, escalating severity from NEW to VERIFIED.
+5. **Command Center Operations** — Civil engineers prioritize repair backlogs via a dynamic risk-scoring dashboard, interactive Leaflet GIS maps, downloadable PDF work orders, and a fully audited lifecycle state machine.
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```
-[ Public Bus Dashcam / Video Stream ]
-                │
-                ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 1. EDGE INTELLIGENCE PIPELINE (`edge/`)                     │
-│    ├── Custom YOLOv8m Inference (Pothole, Crack, Bump)      │
-│    ├── ByteTrack Kalman Filter (Frame-to-Frame Association) │
-│    ├── Trajectory Stitcher (Dropout & Gap Bridging)         │
-│    ├── Bus Fleet & GPS Simulators (Delhi Transit Corridors) │
-│    └── Event Builder (Best-Frame Crop & JSON Telemetry)     │
-└─────────────────────────────────────────────────────────────┘
-                │ HTTP POST multipart/form-data (/api/ingest)
-                ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 2. CENTRAL BACKEND SERVICE (`backend/`)                     │
-│    ├── FastAPI Asynchronous Application Engine              │
-│    ├── 15-meter Haversine Spatial Clustering Engine         │
-│    ├── Multi-Bus Consensus & Auto-Escalation Engine         │
-│    ├── Dynamic Priority Scoring (0 - 100)                   │
-│    ├── Background Video Scan Job Dispatcher (/api/scan)     │
-│    └── SQLite Canonical Data Store (`sih26124.db`)          │
-└─────────────────────────────────────────────────────────────┘
-                │ REST API / Live Polling (JSON)
-                ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 3. COMMAND CENTER WEB DASHBOARD (`frontend/`)               │
-│    ├── Command Center (Home): KPIs, Live HUD, PCI Gauges    │
-│    ├── Live Detection: Real-time inference feed & scanner   │
-│    ├── Geospatial Road Map: Interactive Leaflet GIS         │
-│    ├── Reports & Work Orders: Exportable triage management  │
-│    ├── Bus Fleet Telemetry: Active routes & vehicle status  │
-│    └── Analytics & KPIs: Trend analytics & defect breakdown │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## ✨ Key Features
-
-### 1. Edge Intelligence Pipeline (`edge/`)
-- **Custom Trained YOLOv8m**: Native custom weights trained over 30,000+ Indian road images achieving **0.745 mAP@0.5** and ~12ms inference latency.
-- **Physical Anomaly Tracking**: Uses `supervision.ByteTrack` with a 30-frame persistence buffer, `minimum_matching_threshold=0.80`, and 2-frame confirmation gate to ensure distinct physical defects receive unique identities.
-- **Motion-Compensated Post-Track Stitcher (`edge/track_stitcher.py`)**: Extrapolates spatial trajectories across detection dropouts up to 15 frames ($0 < \text{gap} \le 15$), enforcing directional alignment ($\cos \ge 0.40$) and strict spatial proximity ($\le 25.0\text{ px}$) while guaranteeing concurrent tracks remain distinct.
-- **Lineage Audit Suite (`scripts/audit_lineage.py`)**: End-to-end audit tracing from raw YOLO detections $\to$ ByteTrack track identities $\to$ Stitched physical defects $\to$ Dispatched edge events $\to$ Backend incidents, with contact sheet generation.
-
-### 2. Central Platform & Fusion Engine (`backend/`)
-- **15m Haversine Clustering**: Correlates successive passes over the same road segment into one canonical incident while maintaining a running centroid.
-- **Rapid Observation Spam Guard**: Throttles duplicate frame detections from the same vehicle within a 2.0-second cooldown window.
-- **Dynamic Multi-Bus Escalation**: When `unique_bus_count >= 2`, severity escalates by one tier (e.g. `High` $\to$ `Critical`) and automatically transitions status from `NEW` to `VERIFIED`.
-- **Background Scan Processing**: Asynchronously processes uploaded `.mp4` videos via background worker threads (`POST /api/scan/start` and `GET /api/scan/status/{job_id}`).
-
-### 3. Municipal Sentinel Modern Frontend (`frontend/`)
-- **Design System**: Crafted using the *Municipal Sentinel Modern* aesthetic: deep maritime blue palettes, high-contrast severity badges, and engineered typography (`Space Grotesk`, `Inter`, `JetBrains Mono`).
-- **6 Dedicated Operational Views**:
-  - **Command Center (Home)**: High-level metrics ribbon, 6-stage pipeline breadcrumb, live dashcam HUD, radial Pavement Condition Index (PCI) gauge, and corridor performance cards.
-  - **Live Detection**: Optical crosshair canvas, live GPS stream, detection parameters, and persistent background scan manager.
-  - **Geospatial Road Map**: Leaflet GIS map with polyline transit corridors (Route 12, Route 8, Route 5), clustered pins, and interactive status action popups.
-  - **Reports & Work Orders**: Tabular incident management with filtering, search, and CSV export.
-  - **Bus Fleet Telemetry**: Real-time vehicle location, speed, route assignment, and health metrics.
-  - **Analytics & KPIs**: Severity distribution, defect type breakdowns, and resolution velocity charts.
-- **Cross-View Persistent Scan Manager**: Video upload scans continue polling and processing in the background even when switching across tabs or views.
-
----
-
-## 📂 Repository Structure
-
-```text
-├── backend/                             # FastAPI backend service
-│   ├── app/
-│   │   ├── routers/                     # API routers (incidents, scan, buses, ingest, analytics)
-│   │   ├── services/                    # Spatial deduplication, event fusion, severity scoring
-│   │   ├── database.py                  # SQLite engine & session management
-│   │   ├── models.py                    # SQLAlchemy models (Incident, Observation, StatusHistory, Bus)
-│   │   ├── schemas.py                   # Pydantic validation schemas
-│   │   └── main.py                      # FastAPI entrypoint
-│   ├── static/snapshots/                # Stored anomaly evidence crops
-│   └── requirements.txt                 # Backend Python dependencies
-│
-├── edge/                                # Edge detection and vehicle simulation
-│   ├── detector.py                      # YOLOv8m inference wrapper
-│   ├── anomaly_tracker.py               # ByteTrack Kalman filter tracking
-│   ├── track_stitcher.py                # Post-track spatial/temporal trajectory stitcher
-│   ├── bus_simulator.py                 # Transit fleet vehicle simulator
-│   ├── gps_simulator.py                 # Delhi transit corridor GPS interpolator
-│   ├── event_builder.py                 # Track-to-event packaging and evidence crop builder
-│   └── runner.py                        # Edge video processing CLI runner
-│
-├── frontend/                            # React 18 + Vite + TypeScript Command Center
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Navigation/              # Sidebar and TopHeader navigation bars
-│   │   │   ├── Views/                   # 6 Dedicated Operational Views
-│   │   │   ├── DetailDrawer/            # Incident inspection, observation feed & status updater
-│   │   │   ├── GisMap/                  # Leaflet interactive map with corridor polylines
-│   │   │   └── BusScan/                 # Video scan modal and trigger panel
-│   │   ├── hooks/                       # React hooks (useScanManager, useIncidents, useBuses, useAnalytics)
-│   │   ├── services/                    # API client and seed fallback data
-│   │   └── types/                       # TypeScript data contracts
-│   ├── package.json
-│   └── vite.config.ts
-│
-├── RoadDetectionModel/                  # Custom trained YOLOv8m model
-│   └── RoadModel_yolov8m.pt_rounds120_b9/
-│       ├── weights/best.pt              # Custom weights (mAP@0.5: 0.745, 52MB)
-│       ├── args.yaml                    # Training hyperparameters
-│       └── confusion_matrix.png         # Model performance charts
-│
-├── brain/                               # Architecture ground-truth & documentation
-│   ├── 00_PROJECT_CONTEXT.md            # Vision, MVP scope, and boundaries
-│   ├── 03_SYSTEM_ARCHITECTURE.md        # Technical architecture specifications
-│   ├── 04_DATA_CONTRACTS.md             # Canonical schemas & database contracts
-│   ├── 05_API_CONTRACT.md               # OpenAPI / REST endpoint specifications
-│   ├── 07_EVENT_ENGINE.md               # Tracking, deduplication & escalation logic
-│   └── 11_IMPLEMENTATION_STATUS.md      # Comprehensive audit and verification status
-│
-├── demo/                                # Live evaluators demonstration suite
-│   ├── scenario.json                    # Deterministic multi-bus incident timeline
-│   └── run_demo.py                      # Interactive demo orchestration script
-│
-├── scripts/                             # Offline evaluation & lineage verification
-│   ├── audit_lineage.py                 # Full raw-detection to incident lineage audit
-│   ├── inspect_merges.py                # Track stitcher trajectory analysis
-│   └── measure_stitching.py             # Performance measurement script
-│
-├── tests/                               # Automated test suite (pytest)
-│   ├── test_edge_pipeline.py            # Edge detector, tracker, stitcher, GPS tests
-│   ├── test_scan_router.py              # Video scan job dispatch & status tests
-│   └── test_integration_full.py        # End-to-end pipeline & multi-bus fusion tests
-│
-├── .gitignore                           # Excludes heavy videos, node_modules, venvs, DBs
-└── README.md
+[ Public Bus Dashcam / MP4 Video ]
+                |
+                v
++--------------------------------------------------------------+
+| 1. EDGE INTELLIGENCE PIPELINE  (edge/)                       |
+|    +-- Road Anomaly Detector   YOLOv8m  (Pothole/Crack/Bump) |
+|    +-- Vehicle Detector        YOLOv8n  (Car/Truck/VRU)      |
+|    +-- ANPR Pipeline           YOLOv8n  + EasyOCR            |
+|    +-- Infra Sign Detector     YOLOv8s  (Traffic Signs)      |
+|    +-- ByteTrack + Stitcher    (Frame->Track->Physical Defect)|
+|    +-- GPS & Bus Fleet Sims    (Delhi transit corridors)      |
+|    +-- Event Builder           (Best-frame crop + JSON v2)   |
++--------------------------------------------------------------+
+                | HTTP POST /api/ingest (multipart + JSON)
+                v
++--------------------------------------------------------------+
+| 2. CENTRAL BACKEND SERVICE  (backend/)                       |
+|    +-- FastAPI Async App       (OpenAPI docs at /docs)       |
+|    +-- 15m Haversine Cluster   (Spatial deduplication)       |
+|    +-- Multi-Bus Escalation    (Auto NEW->VERIFIED->CRITICAL)|
+|    +-- Persistence Layer       (Incident/PlateRead/InfraObs) |
+|    +-- PDF Work Order Engine   (ReportLab, no GTK deps)      |
+|    +-- Background Scan Jobs    (/api/scan)                   |
+|    +-- SQLite -> PostgreSQL    (via Alembic migrations)      |
++--------------------------------------------------------------+
+                | REST API / 4s polling (JSON)
+                v
++--------------------------------------------------------------+
+| 3. COMMAND CENTER DASHBOARD  (frontend/)                     |
+|    +-- Command Center (Home)   KPIs, PCI gauge, live HUD     |
+|    +-- Live Detection          Scan trigger, progress feed   |
+|    +-- Geospatial Road Map     Leaflet GIS, severity pins    |
+|    +-- Reports & Work Orders   Triage table, PDF download    |
+|    +-- Bus Fleet Telemetry     Real-time routes & GPS        |
+|    +-- Analytics & KPIs       Recharts defect breakdown      |
++--------------------------------------------------------------+
 ```
 
 ---
 
-## 📊 Machine Learning & Model Evaluation
+## Key Features
 
-The core detection engine uses **Model 1: Custom YOLOv8m** trained specifically on Indian roadway conditions across 30,685 annotated images.
+### Edge Intelligence Pipeline
 
-* **Architecture**: YOLOv8m (25.9M parameters)
-* **Training Hardware**: NVIDIA GeForce RTX 3060 (6GB)
-* **Training Epochs**: 120 rounds (~27.8 hours)
-* **Weights Location**: [`RoadDetectionModel/RoadModel_yolov8m.pt_rounds120_b9/weights/best.pt`](RoadDetectionModel/RoadModel_yolov8m.pt_rounds120_b9/weights/best.pt)
-* **Average Inference Speed**: ~12.0 ms per frame
+| Feature | Detail |
+|---|---|
+| Road Anomaly Detection | Custom YOLOv8m — mAP@0.5: 0.745 on Indian roads |
+| Indian ANPR | YOLOv8n plate detector + EasyOCR text recognition |
+| Traffic Sign Detection | YOLOv8s infra model (demo; IS:1179 weights ready to swap in) |
+| Vehicle Detection | YOLOv8n — 9.2 FPS on CPU |
+| Physical Tracking | supervision.ByteTrack, 30-frame buffer, 2-frame gate |
+| Post-Track Stitcher | Trajectory extrapolation across <=15 frame dropouts |
+| Event Buffering | ANPR & sign detections buffered per frame, attached to event JSON v2 |
+| Lineage Audit | scripts/audit_lineage.py — raw detections to incidents contact sheets |
 
-### Test Set Performance Evaluation (Final Benchmark)
+### Central Platform
+
+| Feature | Detail |
+|---|---|
+| Spatial Clustering | 15m Haversine — collapses successive bus passes into one incident |
+| Spam Guard | 2.0s per-vehicle cooldown on duplicate frame events |
+| Multi-Bus Escalation | unique_bus_count >= 2 triggers severity +1 tier, status -> VERIFIED |
+| Priority Scoring | 0-100 formula (confidence + area + recurrence + bus count) |
+| ANPR Persistence | PlateRead table — plate text, confidence, GPS, nullable incident link |
+| Infra Persistence | InfraObservation table — class, confidence, GPS, route, message_id |
+| PDF Work Orders | ReportLab-based PDF at GET /api/incidents/{id}/report.pdf |
+| Idempotency | message_id dedup on Observation, PlateRead, InfraObservation |
+| Optional Scale-Up | Alembic migrations to TimescaleDB/PostGIS, MinIO S3, Mosquitto MQTT |
+
+### Command Center Frontend
+
+| Feature | Detail |
+|---|---|
+| Design System | Municipal Sentinel Modern — Space Grotesk, Inter, JetBrains Mono |
+| 6 Operational Views | Home, Live Detection, Road Map, Reports, Bus Fleet, Analytics |
+| PCI Gauge | Radial SVG Pavement Condition Index (ASTM D6433 adaptation) |
+| Scan Manager | Global persistent scan — survives tab switches, shows live events |
+| ANPR Badge | Indian Plate subsystem status badge in Live Detection view |
+| PDF Download | One-click work order PDF from Reports and Detail Drawer |
+| GIS Map | Leaflet with Delhi route polylines, severity-coloured pins, popups |
+
+---
+
+## Repository Structure
+
+```
+sih2026-mvp/
++-- backend/                             FastAPI backend service
+|   +-- app/
+|   |   +-- routers/                     API endpoints (incidents, scan, buses, ingest, analytics)
+|   |   +-- services/
+|   |   |   +-- deduplication.py         Haversine + PostGIS spatial clustering
+|   |   |   +-- event_fusion.py          Ingestion -> PlateRead / InfraObservation persistence
+|   |   |   +-- severity.py              Rule-based severity & priority scoring
+|   |   |   +-- analytics_engine.py      PCI (ASTM D6433) + near-miss telemetry
+|   |   |   +-- minio_storage.py         MinIO S3 with local disk fallback
+|   |   |   +-- pdf_report.py            ReportLab PDF work order generator
+|   |   +-- database.py                  SQLAlchemy engine & session factory
+|   |   +-- models.py                    Incident, Observation, PlateRead, InfraObservation, Bus
+|   |   +-- schemas.py                   Pydantic v2 request/response schemas
+|   |   +-- main.py                      FastAPI entrypoint + CORS + static mount
+|   +-- static/snapshots/                Anomaly evidence crop storage
+|   +-- requirements.txt
+|
++-- edge/                                Edge detection & vehicle simulation
+|   +-- detector.py                      YOLOv8m road anomaly inference wrapper
+|   +-- vehicle_detector.py              YOLOv8n vehicle/VRU inference wrapper
+|   +-- infra_detector.py                YOLOv8s traffic sign inference wrapper
+|   +-- anpr/
+|   |   +-- plate_detector.py            YOLOv8n plate region detector
+|   |   +-- ocr_engine.py                EasyOCR text recognition engine
+|   |   +-- anpr_pipeline.py             Combined plate detect + OCR pipeline
+|   +-- anomaly_tracker.py               ByteTrack Kalman filter tracker
+|   +-- track_stitcher.py                Post-track spatial/temporal stitcher
+|   +-- bus_simulator.py                 Fleet vehicle simulator (BUS-01/02/03)
+|   +-- gps_simulator.py                 Delhi GPS corridor interpolator
+|   +-- event_builder.py                 Track->event packaging (JSON v2 schema)
+|   +-- runner.py                        Edge CLI runner with --benchmark flags
+|
++-- frontend/                            React 18 + Vite + TypeScript dashboard
+|   +-- src/
+|   |   +-- components/
+|   |   |   +-- Navigation/              Sidebar & TopHeader
+|   |   |   +-- Views/                   6 operational views
+|   |   |   +-- DetailDrawer/            Incident details, observation feed, PDF button
+|   |   |   +-- GisMap/                  Leaflet interactive map
+|   |   |   +-- BusScan/                 Video scan modal & trigger
+|   |   +-- hooks/                       useScanManager, useIncidents, useBuses, useAnalytics
+|   |   +-- services/                    API client & seed data fallback
+|   |   +-- types/                       TypeScript data contracts
+|   +-- package.json
+|   +-- vite.config.ts
+|
++-- RoadDetectionModel/                  AI model weights
+|   +-- RoadModel_yolov8m.pt_rounds120_b9/
+|   |   +-- weights/best.pt              Road anomaly model (52 MB, mAP@0.5: 0.745)
+|   +-- ANPRPlateDetector_yolov8n/
+|   |   +-- weights/best.pt              Indian plate detector (6.2 MB)
+|   +-- TrafficInfraModel_yolov8s/
+|       +-- weights/best.pt              Traffic sign model (22.6 MB, demo fallback)
+|
++-- alembic/                             Database migration scripts
+|   +-- versions/001_initial_postgres.py Full DDL: all tables + PostGIS geometries
+|
++-- brain/                               Architecture ground-truth docs
+|   +-- 00_PROJECT_CONTEXT.md
+|   +-- 03_SYSTEM_ARCHITECTURE.md
+|   +-- 04_DATA_CONTRACTS.md
+|   +-- 05_API_CONTRACT.md
+|   +-- 07_EVENT_ENGINE.md
+|   +-- 11_IMPLEMENTATION_STATUS.md      Comprehensive verification report
+|
++-- demo/                                Live evaluator demo suite
+|   +-- scenario.json                    Deterministic multi-bus incident timeline
+|   +-- run_demo.py                      Interactive demo orchestrator
+|
++-- scripts/                             Offline evaluation & verification
+|   +-- audit_lineage.py                 Raw detection -> incident lineage audit
+|   +-- download_models.py               Model weight download helper
+|   +-- inspect_merges.py                Track stitcher trajectory analysis
+|   +-- measure_stitching.py             Stitching performance benchmark
+|
++-- tests/                               Automated test suite (78 tests, 100% pass)
+|   +-- test_edge_pipeline.py            Edge tracker, stitcher, GPS, ANPR tests
+|   +-- test_scan_router.py              Video scan job dispatch & status API
+|   +-- test_integration_full.py         End-to-end pipeline & multi-bus fusion
+|
++-- docker-compose.yml                   Optional: TimescaleDB, MinIO, Mosquitto
++-- .env.example                         Environment flags & feature toggles
++-- alembic.ini                          Alembic DB migration config
++-- README.md
+```
+
+---
+
+## Machine Learning Models
+
+CityVision runs **four** YOLOv8 models on the edge pipeline. All weights are stored in `RoadDetectionModel/` and loaded locally — **no internet connection required at runtime**.
+
+### Model 1: Road Anomaly Detector (Primary)
+
+Custom YOLOv8m trained on **30,685 annotated Indian road images** for 120 epochs.
+
+| Attribute | Value |
+|---|---|
+| Architecture | YOLOv8m (25.9M params) |
+| Training Hardware | NVIDIA RTX 3060 6GB |
+| Training Duration | ~27.8 hours / 120 epochs |
+| Weights | `RoadDetectionModel/RoadModel_yolov8m.pt_rounds120_b9/weights/best.pt` |
+| CPU Inference Speed | ~1414 ms/frame (0.7 FPS) |
+
+**Test Set Results:**
 
 | Class | Precision | Recall | mAP@0.5 | mAP@0.5:.95 |
-| :--- | :--- | :--- | :--- | :--- |
+|:---|:---|:---|:---|:---|
 | **Overall** | **0.736** | **0.740** | **0.745** | **0.448** |
 | Heavy-Vehicle | 0.913 | 0.978 | 0.981 | 0.763 |
 | Light-Vehicle | 0.892 | 0.951 | 0.961 | 0.649 |
@@ -205,148 +250,319 @@ The core detection engine uses **Model 1: Custom YOLOv8m** trained specifically 
 | **Pothole** | 0.597 | 0.440 | **0.468** | 0.198 |
 | **Speed-Bump** | 0.804 | 0.908 | **0.885** | 0.487 |
 
+### Model 2: Indian License Plate Detector
+
+Pre-trained YOLOv8n sourced from `gursharn01/indian-license-plate-detector` on Hugging Face. Text is extracted using **EasyOCR** (no Tesseract dependency).
+
+| Attribute | Value |
+|---|---|
+| Architecture | YOLOv8n |
+| Weights | `RoadDetectionModel/ANPRPlateDetector_yolov8n/weights/best.pt` |
+| CPU Inference Speed | ~92 ms/frame (10.9 FPS) |
+
+### Model 3: Vehicle / VRU Detector
+
+| Attribute | Value |
+|---|---|
+| Architecture | YOLOv8n |
+| Weights | `yolov8n.pt` (root, loaded locally) |
+| CPU Inference Speed | ~109 ms/frame (9.2 FPS) |
+
+### Model 4: Traffic Sign / Infrastructure Detector (Demo Fallback)
+
+Pre-trained YOLOv8s (`JakobJFL/yolov8-dk-Traffic-Signs`, 19 classes). Serves as a demonstration fallback; in production this slot is reserved for Indian IS:1179 road sign weights.
+
+| Attribute | Value |
+|---|---|
+| Architecture | YOLOv8s |
+| Weights | `RoadDetectionModel/TrafficInfraModel_yolov8s/weights/best.pt` |
+| CPU Inference Speed | ~471 ms/frame (2.1 FPS) |
+
 ---
 
-## 🚀 Quick Start Guide
+## Quick Start Guide (For Beginners)
 
-### Prerequisites
-- **Python 3.10+** (Python 3.10 – 3.12 recommended)
-- **Node.js 18+** and `npm`
-- **Git**
+This guide walks you through running CityVision locally from scratch. You will have the full system running in about 10 minutes.
+
+### Step 0: Prerequisites
+
+Make sure the following are installed before starting:
+
+| Tool | Minimum Version | Download |
+|---|---|---|
+| **Python** | 3.10 | https://www.python.org/downloads/ |
+| **Node.js** | 18 | https://nodejs.org/ |
+| **Git** | Any | https://git-scm.com/ |
+
+> **Windows users**: Use **PowerShell** (not Command Prompt) for all Python commands.
 
 ---
 
-### 1. Backend Setup
+### Step 1: Clone the Repository
 
 ```bash
-# 1. Create and activate a Python virtual environment
-python -m venv venv
+git clone https://github.com/AribAsim/CityVision.git
+cd CityVision
+```
 
+---
+
+### Step 2: Set Up Python Environment
+
+A **virtual environment** keeps CityVision's dependencies isolated from your other projects.
+
+```bash
+# Create the virtual environment (run once)
+python -m venv venv
+```
+
+**Activate it every time you open a new terminal:**
+
+```powershell
 # Windows (PowerShell):
 .\venv\Scripts\Activate.ps1
-# Linux/macOS:
-# source venv/bin/activate
 
-# 2. Install backend & edge dependencies
+# Linux / macOS:
+# source venv/bin/activate
+```
+
+> **Activation blocked on Windows?** Run this once in PowerShell as Administrator:
+> ```powershell
+> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+> ```
+
+Install all Python dependencies:
+
+```bash
 pip install -r backend/requirements.txt
 pip install -r requirements.txt
-
-# 3. Start the FastAPI server
-uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 ```
-> The API will be live at `http://localhost:8000`. Interactive OpenAPI documentation is available at `http://localhost:8000/docs`.
+
+> This installs PyTorch, Ultralytics YOLOv8, FastAPI, and EasyOCR. Allow 2-5 minutes on a normal connection.
+
+**Optional — copy the environment config:**
+
+```powershell
+# Windows
+copy .env.example .env
+
+# Linux / macOS
+# cp .env.example .env
+```
+
+The defaults in `.env.example` work out-of-the-box with SQLite. No database server required.
 
 ---
 
-### 2. Frontend Setup
+### Step 3: Start the Backend Server
 
-In a new terminal:
+With your virtual environment active:
+
+```powershell
+python -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Expected output:
+```
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Application startup complete.
+```
+
+- **API Base URL**: http://localhost:8000
+- **Swagger UI (interactive docs)**: http://localhost:8000/docs
+
+Leave this terminal running and open a new one.
+
+---
+
+### Step 4: Start the Frontend Dashboard
+
+In a **new terminal**:
 
 ```bash
-# 1. Navigate to the frontend folder
 cd frontend
-
-# 2. Install dependencies
-npm install
-
-# 3. Start the Vite development server
-npm run dev
+npm install       # Install packages (run once)
+npm run dev       # Start the dev server
 ```
-> Open your browser and navigate to `http://localhost:5173`.
+
+Expected output:
+```
+  VITE ready in Xms
+  Local:  http://localhost:5173/
+```
+
+Open **http://localhost:5173** in your browser to see the CityVision Command Center.
 
 ---
 
-### 3. Running the Live Demo
+### Step 5: Run the Live Demo
 
-To run the automated multi-bus simulation demonstrating:
-1. `BUS-01` detecting an anomaly and creating a `NEW` incident,
-2. `BUS-02` re-detecting the same coordinate and triggering **Multi-Bus Verification**,
-3. Auto-escalation of severity (`High` $\to$ `Critical`),
-4. Interactive lifecycle status transitions (`NEW` $\to$ `VERIFIED` $\to$ `ASSIGNED` $\to$ `RESOLVED`):
+The demo simulates a complete multi-bus detection cycle:
+1. **BUS-01** detects a pothole and creates a NEW incident
+2. **BUS-02** detects the same location — Multi-Bus Verification triggers
+3. Severity auto-escalates: High to Critical
+4. Lifecycle advances: NEW to VERIFIED
 
-```bash
-# With the backend running, execute the demo script:
+In a **third terminal** (venv active, from project root):
+
+```powershell
+# Interactive mode — pauses between steps for a presentation
 python -m demo.run_demo
+
+# Automated mode — runs the full scenario without pauses
+python -m demo.run_demo --auto-advance
 ```
+
+Watch the dashboard at http://localhost:5173 update in real time.
 
 ---
 
-### 4. Processing a Video Scan
+### Step 6: Process a Video Scan
 
-#### Option A: Via Web UI
-1. Navigate to the **Live Detection** tab in the web interface.
-2. Click **"Run Bus Scan"**.
-3. Select an assigned Bus (`BUS-01`, `BUS-02`, `BUS-03`), choose a transit corridor, and upload any `.mp4` road dashcam video.
-4. The background scan manager will track processing progress in real time without blocking the UI.
+#### Option A: Via Web UI (Recommended)
+1. Go to the **Live Detection** tab in the dashboard
+2. Click **"Run Bus Scan"**
+3. Select a Bus (BUS-01, BUS-02, or BUS-03), choose a route, and upload any `.mp4` dashcam video
+4. The scan runs in the background — navigate between tabs freely while it processes
 
-#### Option B: Via Edge CLI Runner
-```bash
+#### Option B: Via Edge CLI
+
+```powershell
+# Full pipeline — road anomalies + ANPR + traffic signs
 python -m edge.runner --bus BUS-01 --route ROUTE-RED --video "path/to/road_video.mp4"
+
+# Road anomalies only (faster on CPU)
+python -m edge.runner --bus BUS-01 --video "path/to/video.mp4" --no-anpr --no-infra
+
+# Benchmark inference speed on your machine
+python -m edge.runner --benchmark --video "path/to/video.mp4"
 ```
 
 ---
 
-## 🧪 Automated Testing
+## Edge CLI Runner
 
-The codebase includes an extensive suite of automated tests covering edge tracking, Kalman motion compensation, spatial clustering, API contracts, and scan background workers:
+```
+python -m edge.runner [OPTIONS]
 
-```bash
-# Run all automated tests:
+  --bus TEXT      Bus ID to simulate  (default: BUS-01)
+  --route TEXT    Route ID            (default: ROUTE-RED)
+  --video TEXT    Path to .mp4 file   (required for file mode)
+  --no-vehicles   Disable vehicle/VRU detection
+  --no-anpr       Disable Indian license plate detection
+  --no-infra      Disable traffic sign detection
+  --benchmark     Run speed benchmark and exit
+```
+
+---
+
+## Automated Testing
+
+```powershell
+# Activate venv and set PYTHONPATH
+.\venv\Scripts\Activate.ps1
+$env:PYTHONPATH = "."
+
+# Run all 78 tests
 python -m pytest tests/ -v
 
-# Run edge pipeline tests (29 tests):
-python -m pytest tests/test_edge_pipeline.py -v
+# Run individual modules
+python -m pytest tests/test_edge_pipeline.py -v      # Edge AI pipeline (29 tests)
+python -m pytest tests/test_scan_router.py -v        # Video scan job API (5 tests)
+python -m pytest tests/test_integration_full.py -v   # End-to-end fusion (44 tests)
 
-# Run scan job dispatch tests (5 tests):
-python -m pytest tests/test_scan_router.py -v
-
-# Run end-to-end integration & lineage tests (26 tests):
-python -m pytest tests/test_integration_full.py -v
+# Useful flags
+python -m pytest tests/ -x      # Stop on first failure
+python -m pytest tests/ -s      # Show stdout/print output
+python -m pytest tests/ --pdb   # Drop into debugger on failure
 ```
 
-All 60 tests pass with 100% success rate. The frontend TypeScript codebase compiles cleanly:
+**Current status: 78/78 tests passing.**
+
+Verify the frontend TypeScript compiles cleanly:
+
 ```bash
 cd frontend && npm run build
 ```
 
 ---
 
-## 📡 REST API Reference
+## REST API Reference
+
+All endpoints are available at `http://localhost:8000`. Full interactive documentation at `/docs`.
+
+### Core Endpoints
 
 | Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/api/scan/start` | Upload `.mp4` video and launch unbuffered background edge scan |
-| `GET` | `/api/scan/status/{job_id}` | Check status and dispatched event count of a video scan job |
-| `POST` | `/api/ingest` | Ingest structured detection event with evidence snapshot image |
-| `POST` | `/api/ingest/json` | Ingest structured detection event directly via JSON |
-| `GET` | `/api/incidents` | List road incidents (supports filtering by `status`, `severity`, `anomaly_type`) |
-| `GET` | `/api/incidents/{id}` | Get full incident detail, observation history, and status audit log |
-| `PATCH` | `/api/incidents/{id}/status` | Transition incident lifecycle status (`NEW`, `VERIFIED`, `ASSIGNED`, `IN_PROGRESS`, `RESOLVED`) |
-| `GET` | `/api/buses` | Real-time transit fleet GPS telemetry and active bus status |
-| `GET` | `/api/analytics/summary` | Aggregated KPIs, severity distributions, and municipal health indexes |
-| `GET` | `/api/health` | Service liveness health check |
+|:---|:---|:---|
+| `GET` | `/api/health` | Service liveness check |
+| `POST` | `/api/ingest` | Ingest event with evidence image (multipart) |
+| `POST` | `/api/ingest/json` | Ingest event directly via JSON body |
+| `GET` | `/api/incidents` | List incidents (filter by status, severity, anomaly_type) |
+| `GET` | `/api/incidents/{id}` | Full incident detail + observation history + status audit |
+| `PATCH` | `/api/incidents/{id}/status` | Transition lifecycle status |
+| `GET` | `/api/incidents/{id}/report.pdf` | Download PDF work order |
+| `GET` | `/api/buses` | Real-time fleet GPS telemetry |
+| `GET` | `/api/analytics/summary` | KPI aggregates, PCI, severity distributions |
+
+### Video Scan Endpoints
+
+| Method | Endpoint | Description |
+|:---|:---|:---|
+| `POST` | `/api/scan/start` | Upload .mp4 and launch background edge scan |
+| `GET` | `/api/scan/status/{job_id}` | Check scan status and event count |
+
+### ANPR & Infrastructure Endpoints
+
+| Method | Endpoint | Description |
+|:---|:---|:---|
+| `POST` | `/api/ingest/plates` | Directly ingest ANPR plate reads |
+| `GET` | `/api/ingest/plates` | Query persisted plate reads (filter by bus, time) |
+| `POST` | `/api/ingest/infra` | Directly ingest infrastructure observations |
+| `GET` | `/api/ingest/infra` | Query persisted infra observations |
 
 ---
 
-## 🧠 Architecture & Governance Docs (`/brain`)
+## Architecture and Governance Docs
 
-The [`brain/`](brain/) directory serves as the **single source of truth** for all architectural and technical decisions:
+The `brain/` directory is the single source of truth for all architectural and technical decisions:
 
-- [`00_PROJECT_CONTEXT.md`](brain/00_PROJECT_CONTEXT.md): Core problem statement, MVP objectives, and boundaries.
-- [`01_REPOSITORY_AUDIT.md`](brain/01_REPOSITORY_AUDIT.md): Inventory of legacy code reuse and trained weights evaluation.
-- [`02_MVP_SCOPE.md`](brain/02_MVP_SCOPE.md): Defined scope: In-Scope vs Out-of-Scope capabilities.
-- [`03_SYSTEM_ARCHITECTURE.md`](brain/03_SYSTEM_ARCHITECTURE.md): Complete data flow, component boundaries, and pipeline sequence.
-- [`04_DATA_CONTRACTS.md`](brain/04_DATA_CONTRACTS.md): Incident, Observation, Bus, and StatusHistory schemas.
-- [`05_API_CONTRACT.md`](brain/05_API_CONTRACT.md): Comprehensive REST API contract with request/response payloads.
-- [`06_FRONTEND_SPEC.md`](brain/06_FRONTEND_SPEC.md): Design system tokens, operational views, and component hierarchy.
-- [`07_EVENT_ENGINE.md`](brain/07_EVENT_ENGINE.md): Tracking, trajectory stitching, Haversine clustering, and escalation mathematics.
-- [`08_DEMO_SCENARIO.md`](brain/08_DEMO_SCENARIO.md): Scripted timeline for hackathon jury evaluations.
-- [`09_TECH_DECISIONS.md`](brain/09_TECH_DECISIONS.md): Architectural decisions and trade-off rationales.
-- [`10_AGENT_RULES.md`](brain/10_AGENT_RULES.md): Engineering rules and constraints.
-- [`11_IMPLEMENTATION_STATUS.md`](brain/11_IMPLEMENTATION_STATUS.md): Verification report, empirical metrics, and test results.
+| File | Contents |
+|---|---|
+| [00_PROJECT_CONTEXT.md](brain/00_PROJECT_CONTEXT.md) | Problem statement, MVP objectives and boundaries |
+| [02_MVP_SCOPE.md](brain/02_MVP_SCOPE.md) | In-scope vs out-of-scope for SIH26124 |
+| [03_SYSTEM_ARCHITECTURE.md](brain/03_SYSTEM_ARCHITECTURE.md) | Data flow, component boundaries, pipeline sequence |
+| [04_DATA_CONTRACTS.md](brain/04_DATA_CONTRACTS.md) | Incident, PlateRead, InfraObservation, Bus schemas |
+| [05_API_CONTRACT.md](brain/05_API_CONTRACT.md) | Full REST API contract with payloads |
+| [07_EVENT_ENGINE.md](brain/07_EVENT_ENGINE.md) | ByteTrack, stitcher, Haversine clustering, escalation math |
+| [11_IMPLEMENTATION_STATUS.md](brain/11_IMPLEMENTATION_STATUS.md) | Verification report, empirical benchmarks, test results |
 
 ---
 
-## 📄 License
+## Optional: Docker Compose (Scale-Up)
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+For evaluators who want to test production-scale optional services:
+
+```bash
+# Start TimescaleDB/PostGIS, MinIO S3, and Mosquitto MQTT
+docker compose up -d
+
+# Run Alembic migrations (PostgreSQL DDL)
+alembic upgrade head
+```
+
+Then enable feature flags in `.env`:
+
+```env
+TIMESCALE_ENABLED=true
+MINIO_ENABLED=true
+MQTT_ENABLED=true
+```
+
+> All services are optional. The system falls back to SQLite + local disk + HTTP polling if Docker is not available.
+
+---
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

@@ -25,7 +25,9 @@ class BusResponse(BusBase):
 
 # --- Edge Ingestion Schema ---
 class EdgeEventCreate(BaseModel):
+    schema_version: Optional[int] = Field(default=1, description="Schema version: 1 (MVP) or 2 (Multi-perception)")
     edge_event_id: Optional[str] = Field(default=None, description="UUID or client ID from edge device")
+    message_id: Optional[str] = Field(default=None, description="Idempotency key / MQTT message ID")
     bus_id: str
     route_id: str
     timestamp: Optional[datetime] = None
@@ -38,12 +40,16 @@ class EdgeEventCreate(BaseModel):
     severity: Optional[str] = None
     priority_score: Optional[Union[int, float]] = None
     image_url: Optional[str] = None
+    # Optional Multi-Perception v2 fields
+    nearby_plates: Optional[List[Dict[str, Union[str, float, List[int]]]]] = Field(default_factory=list)
+    nearby_signs: Optional[List[Dict[str, Union[str, float, List[int]]]]] = Field(default_factory=list)
 
 
 # --- Observation Schemas ---
 class ObservationResponse(BaseModel):
     id: int
     edge_event_id: str
+    message_id: Optional[str] = None
     bus_id: str
     route_id: str
     timestamp: datetime
@@ -63,6 +69,54 @@ class StatusHistoryResponse(BaseModel):
     to_status: str
     changed_at: datetime
     notes: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --- Multi-Perception Schemas (ANPR & Infra) ---
+class PlateReadBase(BaseModel):
+    incident_id: Optional[int] = None
+    edge_event_id: Optional[str] = None
+    bus_id: str
+    route_id: str
+    timestamp: Optional[datetime] = None
+    latitude: float
+    longitude: float
+    plate_text: str
+    plate_confidence: float = 0.0
+    ocr_confidence: float = 0.0
+    image_url: Optional[str] = None
+
+
+class PlateReadCreate(PlateReadBase):
+    pass
+
+
+class PlateReadResponse(PlateReadBase):
+    id: int
+    timestamp: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InfraObservationBase(BaseModel):
+    sign_type: str
+    confidence: float
+    bus_id: str
+    route_id: str
+    timestamp: Optional[datetime] = None
+    latitude: float
+    longitude: float
+    image_url: Optional[str] = None
+
+
+class InfraObservationCreate(InfraObservationBase):
+    pass
+
+
+class InfraObservationResponse(InfraObservationBase):
+    id: int
+    timestamp: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -89,6 +143,7 @@ class IncidentSummaryResponse(BaseModel):
 class IncidentDetailResponse(IncidentSummaryResponse):
     observations: List[ObservationResponse] = []
     status_history: List[StatusHistoryResponse] = []
+    plate_reads: List[PlateReadResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -110,6 +165,8 @@ class AnalyticsSummary(BaseModel):
     active_buses: int
     by_anomaly_type: Dict[str, int]
     by_severity: Dict[str, int]
+    pci: Optional[float] = 78.5
+    pci_rating: Optional[str] = "Satisfactory"
 
 
 # --- Scan Schemas ---

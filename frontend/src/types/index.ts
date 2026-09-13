@@ -67,6 +67,8 @@ export interface AnalyticsSummary {
   active_buses: number
   by_anomaly_type: Record<string, number>
   by_severity: Record<string, number>
+  pci?: number
+  pci_rating?: string
 }
 
 export interface IncidentFilters {

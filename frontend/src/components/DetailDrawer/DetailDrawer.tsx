@@ -99,9 +99,33 @@ export const DetailDrawer: React.FC<DetailDrawerProps> = ({
             Road defect detected by YOLOv8m on transit vehicle — awaiting resolution
           </div>
         </div>
-        <button className="drawer-close-btn" onClick={onClose} aria-label="Close details">
-          <X size={18} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <a
+            href={`http://localhost:8000/api/incidents/${data.incident_id}/report.pdf`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '5px 9px',
+              borderRadius: '6px',
+              backgroundColor: 'rgba(59, 130, 246, 0.15)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              color: '#93C5FD',
+              fontSize: '11px',
+              fontWeight: 600,
+              textDecoration: 'none',
+              cursor: 'pointer',
+            }}
+            title="Download Official PWD Work Order PDF"
+          >
+            PDF Report
+          </a>
+          <button className="drawer-close-btn" onClick={onClose} aria-label="Close details">
+            <X size={18} />
+          </button>
+        </div>
       </div>
 
       <div className="drawer-content-scroll">

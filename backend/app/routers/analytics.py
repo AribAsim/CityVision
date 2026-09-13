@@ -42,6 +42,10 @@ def get_analytics_summary(db: Session = Depends(get_db)):
     )
     by_severity = {s: count for s, count in severity_counts}
 
+    # Calculate real Segment PCI
+    from ..services.analytics_engine import calculate_segment_pci
+    pci_data = calculate_segment_pci(db)
+
     return schemas.AnalyticsSummary(
         total_incidents=total_incidents,
         pending_count=new_count,  # mapped to new/pending for dashboard summary
@@ -52,5 +56,7 @@ def get_analytics_summary(db: Session = Depends(get_db)):
         multi_bus_verified_count=multi_bus_verified,
         active_buses=active_buses,
         by_anomaly_type=by_anomaly_type,
-        by_severity=by_severity
+        by_severity=by_severity,
+        pci=pci_data["pci"],
+        pci_rating=pci_data["rating"],
     )

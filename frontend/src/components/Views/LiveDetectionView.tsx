@@ -151,6 +151,10 @@ export const LiveDetectionView: React.FC<LiveDetectionViewProps> = ({ scanManage
             <span className="font-label-sm" style={{ color: 'var(--color-on-surface-variant)', display: 'block' }}>SENSOR ACCEL</span>
             <span className="font-label-md" style={{ color: 'var(--color-tertiary)', fontWeight: 700 }}>EDGE_ACCEL_NPU</span>
           </div>
+          <div style={{ padding: '6px 12px', backgroundColor: '#fef3c7', borderRadius: 'var(--radius-md)', border: '1px solid #fde68a' }}>
+            <span className="font-label-sm" style={{ color: '#92400e', display: 'block' }}>ANPR SUBSYSTEM</span>
+            <span className="font-label-md" style={{ color: '#b45309', fontWeight: 700 }}>Indian Plate YOLO + EasyOCR (Demo)</span>
+          </div>
         </div>
       </div>
 

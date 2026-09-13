@@ -27,8 +27,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const activeBusesCount = buses.length || analytics?.active_buses || SEED_ANALYTICS.active_buses
   const displayIncidents = incidents.length > 0 ? incidents.slice(0, 4) : SEED_RECENT_INCIDENTS
 
-  // City Health Score calculation (Pavement Condition Index 0-100)
-  const healthScore = Math.max(30, Math.min(95, Math.round(100 - (highPriorityCount * 1.5 + (totalCount - resolvedCount) * 0.4))))
+  // City Health Score calculation (Pavement Condition Index 0-100 from ASTM calculation or formula fallback)
+  const healthScore = analytics?.pci !== undefined ? Math.round(analytics.pci) : Math.max(30, Math.min(95, Math.round(100 - (highPriorityCount * 1.5 + (totalCount - resolvedCount) * 0.4))))
 
   const getSeverityBadgeClass = (sev: string) => {
     switch (sev.toLowerCase()) {

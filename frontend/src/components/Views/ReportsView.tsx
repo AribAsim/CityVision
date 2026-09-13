@@ -309,6 +309,28 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                      <a
+                        href={`http://localhost:8000/api/incidents/${inc.incident_id}/report.pdf`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-secondary"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '11px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          textDecoration: 'none',
+                          color: '#00236f',
+                          borderColor: '#cbd5e1'
+                        }}
+                        title="Download Official PWD Work Order PDF"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>picture_as_pdf</span>
+                        PDF
+                      </a>
+
                       <button
                         className="btn-secondary"
                         onClick={(e) => {

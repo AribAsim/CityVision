@@ -636,3 +636,66 @@ class TestBusFleet:
         resp = client.get("/api/buses")
         bus_ids = [b["bus_id"] for b in resp.json()]
         assert bus_id in bus_ids, f"{bus_id} not found in fleet after ingest"
+
+
+# ===========================================================================
+# SECTION 9 – ANPR PlateRead & InfraObservation Persistence (v2)
+# ===========================================================================
+class TestMultiPerceptionPersistence:
+    def test_anpr_and_infra_persisted_via_edge_event(self):
+        """Verify nearby_plates and nearby_signs are written to DB and queryable."""
+        evt_id = f"EVT-PERCEPT-{uuid.uuid4().hex[:6].upper()}"
+        payload = {
+            "edge_event_id": evt_id,
+            "bus_id": "BUS-01",
+            "route_id": "ROUTE-RED",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "latitude": 28.6250,
+            "longitude": 77.2150,
+            "speed_kmh": 28.0,
+            "anomaly_type": "Pothole",
+            "confidence": 0.85,
+            "nearby_plates": [
+                {
+                    "plate_text": "DL01AB1234",
+                    "plate_confidence": 0.94,
+                    "ocr_confidence": 0.91,
+                    "bbox": [100, 200, 300, 250],
+                }
+            ],
+            "nearby_signs": [
+                {
+                    "sign_type": "speed-60",
+                    "confidence": 0.88,
+                    "bbox": [50, 60, 120, 130],
+                }
+            ],
+        }
+
+        resp = client.post("/api/ingest/json", json=payload)
+        assert resp.status_code == 201
+        data = resp.json()
+        inc_id = data["incident_id"]
+
+        # 1. Verify plate read is linked in incident detail
+        detail_resp = client.get(f"/api/incidents/{inc_id}")
+        assert detail_resp.status_code == 200
+        detail = detail_resp.json()
+        assert len(detail.get("plate_reads", [])) >= 1
+        assert detail["plate_reads"][0]["plate_text"] == "DL01AB1234"
+        assert detail["plate_reads"][0]["plate_confidence"] == 0.94
+
+        # 2. Verify standalone query /api/ingest/plates
+        plates_resp = client.get("/api/ingest/plates?bus_id=BUS-01")
+        assert plates_resp.status_code == 200
+        plates = plates_resp.json()
+        plate_texts = [p["plate_text"] for p in plates]
+        assert "DL01AB1234" in plate_texts
+
+        # 3. Verify standalone query /api/ingest/infra
+        infra_resp = client.get("/api/ingest/infra?bus_id=BUS-01")
+        assert infra_resp.status_code == 200
+        signs = infra_resp.json()
+        sign_types = [s["sign_type"] for s in signs]
+        assert "speed-60" in sign_types
+

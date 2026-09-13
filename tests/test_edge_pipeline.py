@@ -474,3 +474,24 @@ class TestAnomalyTracker:
         dist_far = calculate_haversine_meters(lat1, lon1, lat3, lon3)
         assert dist_far > 15.0, f"Expected > 15.0m, got {dist_far}"
 
+    def test_process_track_attaches_nearby_plates_and_signs(self, tmp_path):
+        tracker = AnomalyTracker(min_hits=1)
+        builder = make_builder(dry_run=True, tmp_path=tmp_path)
+        frame = blank_frame()
+        loc = make_location()
+
+        det = make_detection("Pothole", 0.88, [100, 100, 200, 200])
+        tracker.update([det], frame, loc, 0)
+        tracks = tracker.flush()
+        assert len(tracks) == 1
+
+        plates = [{"plate_text": "HR26DK8392", "plate_confidence": 0.95, "ocr_confidence": 0.90, "bbox": [10, 10, 50, 50]}]
+        signs = [{"sign_type": "speed-80", "confidence": 0.89, "bbox": [100, 100, 150, 150]}]
+
+        evt = builder.process_track(tracks[0], 640, 480, nearby_plates=plates, nearby_signs=signs)
+        assert evt is not None
+        assert evt["schema_version"] == 2
+        assert evt["nearby_plates"] == plates
+        assert evt["nearby_signs"] == signs
+
+

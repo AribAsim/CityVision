@@ -117,6 +117,8 @@ class EventBuilder:
         completed_track: CompletedTrack,
         frame_w: int,
         frame_h: int,
+        nearby_plates: Optional[list[dict]] = None,
+        nearby_signs: Optional[list[dict]] = None,
     ) -> Optional[dict]:
         """
         Evaluate a CompletedTrack from ByteTrack. Returns the dispatched
@@ -143,9 +145,12 @@ class EventBuilder:
         )
 
         evt_uuid = f"EVT-TRK{completed_track.track_id}-{uuid.uuid4().hex[:6].upper()}"
+        msg_id = f"MSG-{uuid.uuid4().hex[:12].upper()}"
         event = {
+            "schema_version": 2 if (nearby_plates or nearby_signs) else 1,
             "edge_event_id": evt_uuid,
             "event_id": evt_uuid,
+            "message_id": msg_id,
             "anomaly_type": cls,
             "event_type": cls,
             "confidence": round(completed_track.best_confidence, 4),
@@ -159,6 +164,8 @@ class EventBuilder:
             "status": "Pending",
             "track_id": completed_track.track_id,
             "hit_count": completed_track.hit_count,
+            "nearby_plates": nearby_plates or [],
+            "nearby_signs": nearby_signs or [],
         }
 
         self.metrics["events_created"] += 1
@@ -179,6 +186,8 @@ class EventBuilder:
         frame: np.ndarray,
         frame_w: int,
         frame_h: int,
+        nearby_plates: Optional[list[dict]] = None,
+        nearby_signs: Optional[list[dict]] = None,
     ) -> Optional[dict]:
         """
         Evaluate a single RawDetection. Returns the dispatched event dict
@@ -214,9 +223,12 @@ class EventBuilder:
 
         # --- Build event payload ---
         evt_uuid = f"EVT-{uuid.uuid4().hex[:10].upper()}"
+        msg_id = f"MSG-{uuid.uuid4().hex[:12].upper()}"
         event = {
+            "schema_version": 2 if (nearby_plates or nearby_signs) else 1,
             "edge_event_id": evt_uuid,
             "event_id": evt_uuid,
+            "message_id": msg_id,
             "anomaly_type": cls,
             "event_type": cls,
             "confidence": round(detection.confidence, 4),
@@ -228,6 +240,8 @@ class EventBuilder:
             "route_id": self.route_id,
             "evidence_path": str(evidence_path),
             "status": "Pending",
+            "nearby_plates": nearby_plates or [],
+            "nearby_signs": nearby_signs or [],
         }
 
         # --- Dispatch ---

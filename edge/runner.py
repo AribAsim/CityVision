@@ -63,7 +63,16 @@ def build_args() -> argparse.Namespace:
     p.add_argument("--dry-run", action="store_true",
                    help="Skip HTTP POST (useful for offline testing)")
     p.add_argument("--model", default=None,
-                   help="Override model path (defaults to RoadDetectionModel/…/best.pt)")
+                   help="Override road anomaly model path (defaults to RoadDetectionModel/…/best.pt)")
+    # Multi-perception & diagnostic flags
+    p.add_argument("--no-vehicles", action="store_true",
+                   help="Disable secondary vehicle/pedestrian detection")
+    p.add_argument("--no-anpr", action="store_true",
+                   help="Disable secondary license plate and OCR detection")
+    p.add_argument("--no-infra", action="store_true",
+                   help="Disable secondary traffic sign and infra detection")
+    p.add_argument("--benchmark", action="store_true",
+                   help="Benchmark real inference latencies and FPS across models")
     return p.parse_args()
 
 
@@ -73,6 +82,32 @@ def run(args: argparse.Namespace) -> None:
     # ------------------------------------------------------------------
     bus = BusSimulator(bus_id=args.bus, video_source=args.video)
     detector = RoadDetector(model_path=args.model) if args.model else RoadDetector()
+
+    # Optional multi-perception detectors
+    vehicle_detector = None
+    if not args.no_vehicles:
+        try:
+            from edge.vehicle_detector import VehicleDetector
+            vehicle_detector = VehicleDetector()
+        except Exception as e:
+            print(f"[RUNNER] VehicleDetector unavailable ({e}). Continuing without vehicle perception.")
+
+    infra_detector = None
+    if not args.no_infra:
+        try:
+            from edge.infra_detector import InfraDetector
+            infra_detector = InfraDetector()
+        except Exception as e:
+            print(f"[RUNNER] InfraDetector unavailable ({e}). Continuing without infra perception.")
+
+    anpr_pipeline = None
+    if not args.no_anpr:
+        try:
+            from edge.anpr.anpr_pipeline import ANPRPipeline
+            anpr_pipeline = ANPRPipeline()
+        except Exception as e:
+            print(f"[RUNNER] ANPRPipeline unavailable ({e}). Continuing without license plate perception.")
+
     gps = GPSSimulator(route_id=bus.route_id)   # total_frames filled later
     event_builder = EventBuilder(
         bus_id=bus.bus_id,
@@ -103,6 +138,7 @@ def run(args: argparse.Namespace) -> None:
 
     print(f"[RUNNER] Bus={bus.bus_id}  Route={bus.route_id}  Source={source}")
     print(f"[RUNNER] Resolution={frame_w}x{frame_h}  FPS={fps:.1f}  Frames={total_frames or 'live'}")
+    print(f"[RUNNER] MultiPerception: Vehicles={vehicle_detector is not None}, Infra={infra_detector is not None}, ANPR={anpr_pipeline is not None}")
     print(f"[RUNNER] API={args.api}  DryRun={args.dry_run}  Preview={not args.no_preview}")
     print("[RUNNER] Press 'q' in the preview window to quit.\n")
 
@@ -111,6 +147,16 @@ def run(args: argparse.Namespace) -> None:
     anomaly_detections = 0
     total_completed_tracks = 0
     dispatched = 0
+
+    # Timing metrics (ms)
+    time_road_ms = []
+    time_vehicle_ms = []
+    time_infra_ms = []
+    time_anpr_ms = []
+
+    # Multi-perception buffers for v2 multi-perception event attachment
+    buffered_plates: list[dict] = []
+    buffered_signs: list[dict] = []
 
     try:
         while True:
@@ -122,10 +168,51 @@ def run(args: argparse.Namespace) -> None:
             # --- GPS location for this frame ---
             location = gps.get_location(frame_idx)
 
-            # --- YOLO inference (all classes) ---
+            # --- YOLO inference: Road Anomalies (Primary) ---
+            t0 = time.perf_counter()
             all_detections = detector.detect(frame)
+            t1 = time.perf_counter()
+            time_road_ms.append((t1 - t0) * 1000.0)
+
             raw_yolo_detections += len(all_detections)
             anomaly_detections += sum(1 for d in all_detections if d.class_name in ANOMALY_CLASSES)
+
+            # --- Optional Secondary Perception: Vehicles & Pedestrians ---
+            vehicle_detections = []
+            if vehicle_detector is not None:
+                tv0 = time.perf_counter()
+                vehicle_detections = vehicle_detector.detect(frame)
+                tv1 = time.perf_counter()
+                time_vehicle_ms.append((tv1 - tv0) * 1000.0)
+
+            # --- Optional Secondary Perception: Traffic Signs / Infra ---
+            infra_detections = []
+            if infra_detector is not None:
+                ti0 = time.perf_counter()
+                infra_detections = infra_detector.detect(frame)
+                ti1 = time.perf_counter()
+                time_infra_ms.append((ti1 - ti0) * 1000.0)
+                for idet in infra_detections:
+                    buffered_signs.append({
+                        "sign_type": idet.class_name,
+                        "confidence": round(float(idet.confidence), 4),
+                        "bbox": [int(b) for b in idet.bbox],
+                    })
+
+            # --- Optional Secondary Perception: ANPR ---
+            plate_reads = []
+            if anpr_pipeline is not None and frame_idx % 3 == 0:  # Sample every 3rd frame to conserve compute
+                tp0 = time.perf_counter()
+                plate_reads = anpr_pipeline.process_frame(frame)
+                tp1 = time.perf_counter()
+                time_anpr_ms.append((tp1 - tp0) * 1000.0)
+                for pr in plate_reads:
+                    buffered_plates.append({
+                        "plate_text": pr.plate_text,
+                        "plate_confidence": round(float(pr.plate_confidence), 4),
+                        "ocr_confidence": round(float(pr.ocr_confidence), 4),
+                        "bbox": [int(b) for b in pr.bbox],
+                    })
 
             # --- Physical Anomaly Tracking (ByteTrack) ---
             completed_tracks = tracker.update(
@@ -143,13 +230,19 @@ def run(args: argparse.Namespace) -> None:
             # --- Dispatch events for any tracks ready this frame ---
             for c_track in ready_to_dispatch:
                 total_completed_tracks += 1
+                plates_to_send = list(buffered_plates)
+                signs_to_send = list(buffered_signs)
                 event = event_builder.process_track(
                     completed_track=c_track,
                     frame_w=frame_w,
                     frame_h=frame_h,
+                    nearby_plates=plates_to_send,
+                    nearby_signs=signs_to_send,
                 )
                 if event is not None:
                     dispatched += 1
+                    buffered_plates.clear()
+                    buffered_signs.clear()
 
             # --- Draw ALL boxes on preview frame ---
             display_frame = frame.copy()
@@ -187,13 +280,19 @@ def run(args: argparse.Namespace) -> None:
 
         for c_track in final_stitched_tracks:
             total_completed_tracks += 1
+            plates_to_send = list(buffered_plates)
+            signs_to_send = list(buffered_signs)
             event = event_builder.process_track(
                 completed_track=c_track,
                 frame_w=frame_w,
                 frame_h=frame_h,
+                nearby_plates=plates_to_send,
+                nearby_signs=signs_to_send,
             )
             if event is not None:
                 dispatched += 1
+                buffered_plates.clear()
+                buffered_signs.clear()
 
     finally:
         cap.release()
@@ -212,6 +311,20 @@ def run(args: argparse.Namespace) -> None:
         print(f"[RUNNER] Unique physical tracks: {unique_tracks}")
         print(f"[RUNNER] Events created: {events_created}")
         print(f"[RUNNER] Events dispatched: {dispatched}")
+
+        # Benchmark Latencies
+        if time_road_ms:
+            avg_road = sum(time_road_ms) / len(time_road_ms)
+            print(f"[BENCHMARK] Road Anomaly (YOLOv8m): avg {avg_road:.1f} ms/frame ({1000.0/max(avg_road, 0.1):.1f} FPS)")
+        if time_vehicle_ms:
+            avg_veh = sum(time_vehicle_ms) / len(time_vehicle_ms)
+            print(f"[BENCHMARK] Vehicles/VRU (YOLOv8n):  avg {avg_veh:.1f} ms/frame ({1000.0/max(avg_veh, 0.1):.1f} FPS)")
+        if time_infra_ms:
+            avg_inf = sum(time_infra_ms) / len(time_infra_ms)
+            print(f"[BENCHMARK] Traffic Signs (YOLOv8):  avg {avg_inf:.1f} ms/frame ({1000.0/max(avg_inf, 0.1):.1f} FPS)")
+        if time_anpr_ms:
+            avg_anpr = sum(time_anpr_ms) / len(time_anpr_ms)
+            print(f"[BENCHMARK] ANPR Plate+OCR:          avg {avg_anpr:.1f} ms/read ({1000.0/max(avg_anpr, 0.1):.1f} reads/s)")
         print(f"[RUNNER] ================================================\n")
 
 

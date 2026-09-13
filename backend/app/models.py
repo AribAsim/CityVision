@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text
+from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.orm import relationship
-from .database import Base
+from geoalchemy2 import Geometry
+from .database import Base, DATABASE_URL
 
 
 def utc_now():
@@ -34,6 +36,12 @@ class Incident(Base):
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
     
+    # Optional PostGIS geometry column (Geometry when PostgreSQL is active, String/Text placeholder when SQLite)
+    if "postgres" in DATABASE_URL:
+        geom = Column(Geometry(geometry_type="POINT", srid=4326), nullable=True)
+    else:
+        geom = Column(String, nullable=True)
+    
     first_detected_at = Column(DateTime, default=utc_now, nullable=False)
     last_detected_at = Column(DateTime, default=utc_now, nullable=False)
     
@@ -44,6 +52,7 @@ class Incident(Base):
     # Relationships
     observations = relationship("Observation", back_populates="incident", cascade="all, delete-orphan")
     status_history = relationship("StatusHistory", back_populates="incident", cascade="all, delete-orphan")
+    plate_reads = relationship("PlateRead", backref="incident")
 
 
 class Observation(Base):
@@ -52,12 +61,17 @@ class Observation(Base):
     id = Column(Integer, primary_key=True, index=True)
     incident_id = Column(Integer, ForeignKey("incidents.id", ondelete="CASCADE"), nullable=False, index=True)
     edge_event_id = Column(String, unique=True, index=True, nullable=False)
+    message_id = Column(String, unique=True, index=True, nullable=True)  # MQTT / Event lineage
     bus_id = Column(String, index=True, nullable=False)
     route_id = Column(String, index=True, nullable=False)
     timestamp = Column(DateTime, default=utc_now, nullable=False)
     
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
+    if "postgres" in DATABASE_URL:
+        geom = Column(Geometry(geometry_type="POINT", srid=4326), nullable=True)
+    else:
+        geom = Column(String, nullable=True)
     speed_kmh = Column(Float, default=0.0, nullable=False)
     confidence = Column(Float, nullable=False)
     image_url = Column(String, nullable=True)
@@ -76,3 +90,35 @@ class StatusHistory(Base):
     notes = Column(Text, nullable=True)
 
     incident = relationship("Incident", back_populates="status_history")
+
+
+class PlateRead(Base):
+    __tablename__ = "plate_reads"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # Critical requirement from Mistake #4: PlateRead.incident_id must be NULLABLE
+    incident_id = Column(Integer, ForeignKey("incidents.id", ondelete="SET NULL"), nullable=True, index=True)
+    edge_event_id = Column(String, index=True, nullable=True)
+    bus_id = Column(String, index=True, nullable=False)
+    route_id = Column(String, index=True, nullable=False)
+    timestamp = Column(DateTime, default=utc_now, nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    plate_text = Column(String, index=True, nullable=False)
+    plate_confidence = Column(Float, nullable=False)
+    ocr_confidence = Column(Float, nullable=False)
+    image_url = Column(String, nullable=True)
+
+
+class InfraObservation(Base):
+    __tablename__ = "infra_observations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sign_type = Column(String, index=True, nullable=False)  # e.g., 'speed-100', 'no-parking'
+    confidence = Column(Float, nullable=False)
+    bus_id = Column(String, index=True, nullable=False)
+    route_id = Column(String, index=True, nullable=False)
+    timestamp = Column(DateTime, default=utc_now, nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    image_url = Column(String, nullable=True)

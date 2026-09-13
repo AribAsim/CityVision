@@ -1,0 +1,49 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb-postgis:2.17.2-pg16
+    container_name: cityvision-timescaledb
+    environment:
+      POSTGRES_USER: sih_user
+      POSTGRES_PASSWORD: sih_secure_pass
+      POSTGRES_DB: sih26124
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sih_user -d sih26124"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:RELEASE.2024-01-18T22-51-28Z
+    container_name: cityvision-minio
+    command: server /data --console-address ":9001" --compat
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0.18
+    container_name: cityvision-mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    restart: unless-stopped
+
+volumes:
+  timescale_data:
+  minio_data:
+  mosquitto_data:
+  mosquitto_log:

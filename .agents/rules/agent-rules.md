@@ -15,7 +15,7 @@ trigger: always_on
 
 5. Never introduce a new framework when an existing framework can solve the problem.
 
-6. Do not implement future-scope features during MVP development.
+6. Do not implement future-scope features during MVP development. 
 
 7. Preserve working existing functionality.
 
