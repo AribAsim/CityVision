@@ -1,6 +1,6 @@
 import React from 'react'
 
-export type NavTab = 'home' | 'live-detection' | 'road-map' | 'reports' | 'bus-fleet' | 'analytics'
+export type NavTab = 'home' | 'live-detection' | 'road-map' | 'transport-authority' | 'field-ops' | 'reports' | 'bus-fleet' | 'analytics'
 
 interface SidebarProps {
   activeTab: NavTab
@@ -21,6 +21,8 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Command Center', icon: 'grid_view' },
   { id: 'live-detection', label: 'Live Detection', icon: 'videocam', badge: 'LIVE' },
   { id: 'road-map', label: 'Geospatial Road Map', icon: 'map' },
+  { id: 'transport-authority', label: 'Transport Corridor', icon: 'traffic', badge: 'OD' },
+  { id: 'field-ops', label: 'Field Ops Portal', icon: 'handyman' },
   { id: 'reports', label: 'Reports & Work Orders', icon: 'assignment_late' },
   { id: 'bus-fleet', label: 'Bus Fleet Telemetry', icon: 'directions_bus' },
   { id: 'analytics', label: 'Analytics & KPIs', icon: 'insights' },

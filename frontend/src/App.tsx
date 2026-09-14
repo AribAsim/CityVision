@@ -12,6 +12,8 @@ import { RoadMapView } from './components/Views/RoadMapView'
 import { ReportsView } from './components/Views/ReportsView'
 import { BusFleetView } from './components/Views/BusFleetView'
 import { AnalyticsView } from './components/Views/AnalyticsView'
+import { TransportAuthorityView } from './components/Views/TransportAuthorityView'
+import { FieldOpsView } from './components/Views/FieldOpsView'
 import { DetailDrawer } from './components/DetailDrawer/DetailDrawer'
 
 export const App: React.FC = () => {
@@ -99,6 +101,22 @@ export const App: React.FC = () => {
               incidents={incidents}
               buses={buses}
               onSelectIncident={setSelectedIncident}
+            />
+          )}
+
+          {currentTab === 'transport-authority' && (
+            <TransportAuthorityView
+              incidents={incidents}
+              buses={buses}
+              onSelectIncident={setSelectedIncident}
+            />
+          )}
+
+          {currentTab === 'field-ops' && (
+            <FieldOpsView
+              incidents={incidents}
+              onSelectIncident={setSelectedIncident}
+              onRefresh={handleRefreshAll}
             />
           )}
 

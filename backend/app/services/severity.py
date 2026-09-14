@@ -29,6 +29,7 @@ class SeverityRulesConfig:
                 "Crack-Severe": 55,
                 "Crack": 30,
                 "Speed-Bump": 20,
+                "Rash-Driving": 90,
             }
 
 

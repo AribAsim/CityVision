@@ -64,6 +64,9 @@ def build_args() -> argparse.Namespace:
                    help="Skip HTTP POST (useful for offline testing)")
     p.add_argument("--model", default=None,
                    help="Override road anomaly model path (defaults to RoadDetectionModel/…/best.pt)")
+    p.add_argument("--camera-id", default="FRONT",
+                   choices=["FRONT", "REAR", "LEFT", "RIGHT"],
+                   help="Identifier for the camera stream")
     # Multi-perception & diagnostic flags
     p.add_argument("--no-vehicles", action="store_true",
                    help="Disable secondary vehicle/pedestrian detection")
@@ -112,6 +115,7 @@ def run(args: argparse.Namespace) -> None:
     event_builder = EventBuilder(
         bus_id=bus.bus_id,
         route_id=bus.route_id,
+        camera_id=args.camera_id,
         api_url=args.api,
         dry_run=args.dry_run,
     )
@@ -243,6 +247,20 @@ def run(args: argparse.Namespace) -> None:
                     dispatched += 1
                     buffered_plates.clear()
                     buffered_signs.clear()
+
+            # --- Telemetry tick & Driver Safety (Rash Driving Heuristic) ---
+            bus.tick(dt=1.0 / max(fps, 1.0))
+            if bus.check_rash_driving():
+                cur_spd = bus.current_speed()
+                rash_evt = event_builder.dispatch_safety_event(
+                    event_type="Rash-Driving",
+                    location=location,
+                    frame=frame,
+                    confidence=0.88,
+                    details={"speed_kmh": cur_spd},
+                )
+                if rash_evt:
+                    dispatched += 1
 
             # --- Draw ALL boxes on preview frame ---
             display_frame = frame.copy()

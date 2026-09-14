@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import dataclasses
 import random
+import time
 from typing import Dict, Optional
 
 
@@ -64,6 +65,10 @@ class BusSimulator:
         self.config = dataclasses.replace(FLEET[bus_id])
         if video_source:
             self.config.video_source = video_source
+            
+        self._current_speed = self.config.sample_speed()
+        self._speed_history = []
+        self._large_speed_changes = 0
 
     @property
     def bus_id(self) -> str:
@@ -78,4 +83,51 @@ class BusSimulator:
         return self.config.status
 
     def current_speed(self) -> float:
-        return self.config.sample_speed()
+        return self._current_speed
+        
+    def tick(self, dt: float = 1.0/30.0) -> float:
+        # Introduce occasional erratic behavior for testing
+        if random.random() < 0.005:
+            accel = random.uniform(-25.0, 25.0) # km/h per second (harsh)
+        else:
+            accel = random.uniform(-2.0, 2.0) # normal
+            
+        self._current_speed += accel * dt
+        self._current_speed = max(0, min(self._current_speed, 100))
+        
+        decel_g = 0.0
+        if accel < 0:
+            # 1 km/h/s = ~0.277 m/s^2. 1g = 9.8 m/s^2
+            decel_m_s2 = abs(accel) * 0.2777
+            decel_g = decel_m_s2 / 9.8
+            
+        if abs(accel) > 15.0:
+            self._large_speed_changes += 1
+            
+        self._speed_history.append((self._current_speed, decel_g))
+        if len(self._speed_history) > 150:
+            self._speed_history.pop(0)
+            
+        # Slowly decay the counter of large speed changes
+        if random.random() < 0.05:
+            self._large_speed_changes = max(0, self._large_speed_changes - 1)
+            
+        return self._current_speed
+
+    def check_rash_driving(self) -> bool:
+        if not self._speed_history:
+            return False
+            
+        current_speed, current_decel = self._speed_history[-1]
+        
+        if current_speed > 80.0:
+            return True
+            
+        if current_decel > 0.4:
+            return True
+            
+        if self._large_speed_changes >= 3:
+            self._large_speed_changes = 0
+            return True
+            
+        return False

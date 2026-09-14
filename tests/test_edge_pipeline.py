@@ -494,4 +494,42 @@ class TestAnomalyTracker:
         assert evt["nearby_plates"] == plates
         assert evt["nearby_signs"] == signs
 
+    def test_bus_simulator_rash_driving_heuristic(self):
+        bus = BusSimulator("BUS-01")
+        # Test candidate 1: speed > 80 km/h
+        bus._speed_history = [(85.0, 0.1)]
+        assert bus.check_rash_driving() is True
+
+        # Test candidate 2: deceleration > 0.4g
+        bus._speed_history = [(40.0, 0.5)]
+        assert bus.check_rash_driving() is True
+
+        # Test candidate 3: repeated large speed changes
+        bus._speed_history = [(35.0, 0.1)]
+        bus._large_speed_changes = 3
+        assert bus.check_rash_driving() is True
+
+        # Normal condition
+        bus._speed_history = [(40.0, 0.1)]
+        bus._large_speed_changes = 0
+        assert bus.check_rash_driving() is False
+
+    def test_dispatch_safety_event(self, tmp_path):
+        builder = make_builder(dry_run=True, tmp_path=tmp_path)
+        loc = make_location()
+        frame = blank_frame()
+        evt = builder.dispatch_safety_event(
+            event_type="Rash-Driving",
+            location=loc,
+            frame=frame,
+            confidence=0.90,
+            details={"speed_kmh": 85.0},
+        )
+        assert evt is not None
+        assert evt["event_type"] == "Rash-Driving"
+        assert evt["speed_kmh"] == 85.0
+        assert evt["severity"] == "Critical"  # 90 * 0.9 = 81 >= 75
+        assert evt["status"] == "Pending"
+
+
 

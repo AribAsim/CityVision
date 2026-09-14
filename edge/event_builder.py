@@ -17,6 +17,8 @@ import math
 import os
 import time
 import uuid
+import sqlite3
+import threading
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -39,6 +41,7 @@ BASE_SCORES = {
     "Crack-Severe": 55,
     "Crack": 30,
     "Speed-Bump": 20,
+    "Rash-Driving": 90,
 }
 LARGE_BBOX_BONUS = 15            # added when bbox > 4% screen area
 LARGE_BBOX_THRESHOLD = 0.04      # fraction of frame w*h
@@ -91,16 +94,23 @@ class EventBuilder:
         self,
         bus_id: str,
         route_id: str,
+        camera_id: str = "FRONT",
         api_url: str = DEFAULT_API_URL,
         evidence_dir: Optional[Path] = None,
         dry_run: bool = False,      # set True in unit tests
     ):
         self.bus_id = bus_id
         self.route_id = route_id
+        self.camera_id = camera_id
         self.api_url = api_url
         self.evidence_dir = Path(evidence_dir) if evidence_dir else EVIDENCE_DIR
         self.evidence_dir.mkdir(parents=True, exist_ok=True)
         self.dry_run = dry_run
+        
+        self.db_path = self.evidence_dir / "outbox.db"
+        self._init_db()
+        self._outbox_thread = threading.Thread(target=self._outbox_worker, daemon=True)
+        self._outbox_thread.start()
 
         # key → (class_name,)  (per bus; extend to per-bus if needed)
         self._dedup: dict[str, _DeduplicatorState] = {}
@@ -108,6 +118,57 @@ class EventBuilder:
             "events_created": 0,
             "events_dispatched": 0,
         }
+
+    def _init_db(self):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute('''CREATE TABLE IF NOT EXISTS outbox (
+                            event_id TEXT PRIMARY KEY,
+                            payload TEXT,
+                            evidence_path TEXT,
+                            created_at REAL,
+                            retry_count INTEGER,
+                            last_attempt REAL,
+                            status TEXT)''')
+
+    def _outbox_worker(self):
+        while True:
+            time.sleep(5)
+            try:
+                with sqlite3.connect(self.db_path) as conn:
+                    c = conn.execute("SELECT event_id, payload, evidence_path, retry_count, last_attempt FROM outbox WHERE status='Pending'")
+                    rows = c.fetchall()
+                    for row in rows:
+                        event_id, payload, ev_path, retry_count, last_attempt = row
+                        now = time.time()
+                        
+                        # Exponential backoff (max 60 seconds)
+                        backoff = min((2 ** retry_count) * 5, 60)
+                        if now - last_attempt < backoff:
+                            continue
+                        
+                        success = False
+                        try:
+                            with open(ev_path, "rb") as fh:
+                                resp = requests.post(
+                                    self.api_url,
+                                    data={"event_data": payload},
+                                    files={"image_file": (Path(ev_path).name, fh, "image/jpeg")},
+                                    timeout=5,
+                                )
+                            if resp.status_code in (200, 201):
+                                success = True
+                                print(f"[OUTBOX] ✓ Flushed event {event_id}")
+                        except Exception:
+                            pass
+                        
+                        if success:
+                            conn.execute("DELETE FROM outbox WHERE event_id=?", (event_id,))
+                        else:
+                            conn.execute("UPDATE outbox SET retry_count=?, last_attempt=? WHERE event_id=?", 
+                                         (retry_count + 1, now, event_id))
+                    conn.commit()
+            except Exception as e:
+                print(f"[OUTBOX] Worker error: {e}")
 
     # ------------------------------------------------------------------
     # Public: process a completed physical anomaly track
@@ -160,6 +221,7 @@ class EventBuilder:
             "longitude": completed_track.best_location.longitude,
             "bus_id": self.bus_id,
             "route_id": self.route_id,
+            "camera_id": self.camera_id,
             "evidence_path": str(evidence_path),
             "status": "Pending",
             "track_id": completed_track.track_id,
@@ -238,6 +300,7 @@ class EventBuilder:
             "longitude": location.longitude,
             "bus_id": self.bus_id,
             "route_id": self.route_id,
+            "camera_id": self.camera_id,
             "evidence_path": str(evidence_path),
             "status": "Pending",
             "nearby_plates": nearby_plates or [],
@@ -253,6 +316,72 @@ class EventBuilder:
         state.last_lat = location.latitude
         state.last_lon = location.longitude
 
+        return event
+
+    def dispatch_safety_event(
+        self,
+        event_type: str,
+        location: LocationData,
+        frame: Optional[np.ndarray] = None,
+        confidence: float = 0.9,
+        details: Optional[dict] = None,
+    ) -> Optional[dict]:
+        """
+        Dispatches a vehicle/driver safety event (such as Rash-Driving or near-miss).
+        """
+        key = event_type
+        state = self._dedup.setdefault(key, _DeduplicatorState())
+        now = time.time()
+
+        if now - state.last_time < COOLDOWN_SECONDS:
+            return None
+
+        base = BASE_SCORES.get(event_type, 80)
+        score = base * confidence
+        severity = _score_to_severity(score)
+
+        evidence_path = self.evidence_dir / f"safety_{int(now * 1000)}.jpg"
+        if frame is not None:
+            snippet = frame.copy()
+            cv2.putText(snippet, f"{event_type} {confidence:.0%}", (20, 40),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+            cv2.imwrite(str(evidence_path), snippet, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        else:
+            blank = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(blank, f"SAFETY EVENT: {event_type}", (20, 240),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            cv2.imwrite(str(evidence_path), blank, [cv2.IMWRITE_JPEG_QUALITY, 85])
+
+        evt_uuid = f"EVT-SAF-{uuid.uuid4().hex[:8].upper()}"
+        msg_id = f"MSG-{uuid.uuid4().hex[:12].upper()}"
+        event = {
+            "schema_version": 1,
+            "edge_event_id": evt_uuid,
+            "event_id": evt_uuid,
+            "message_id": msg_id,
+            "anomaly_type": event_type,
+            "event_type": event_type,
+            "confidence": round(confidence, 4),
+            "severity": severity,
+            "priority_score": round(min(score, 100), 1),
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "speed_kmh": details.get("speed_kmh", 0.0) if details else 0.0,
+            "bus_id": self.bus_id,
+            "route_id": self.route_id,
+            "camera_id": self.camera_id,
+            "evidence_path": str(evidence_path),
+            "status": "Pending",
+        }
+
+        self.metrics["events_created"] += 1
+        if not self.dry_run:
+            self._post(event, evidence_path)
+        self.metrics["events_dispatched"] += 1
+
+        state.last_time = now
+        state.last_lat = location.latitude
+        state.last_lon = location.longitude
         return event
 
     # ------------------------------------------------------------------
@@ -297,20 +426,35 @@ class EventBuilder:
         return fpath
 
     def _post(self, event: dict, evidence_path: Path) -> None:
-        """Fire-and-forget HTTP POST with evidence image attached."""
+        """Attempt immediate HTTP POST. Fall back to outbox on failure."""
+        event_id = event["event_id"]
+        payload = json.dumps(event)
+        now = time.time()
+        success = False
         try:
             with open(evidence_path, "rb") as fh:
                 resp = requests.post(
                     self.api_url,
-                    data={"event_data": json.dumps(event)},
+                    data={"event_data": payload},
                     files={"image_file": (evidence_path.name, fh, "image/jpeg")},
                     timeout=5,
                 )
-            if resp.status_code not in (200, 201):
-                print(f"[DISPATCHER] Unexpected status {resp.status_code}: {resp.text[:120]}")
-            else:
+            if resp.status_code in (200, 201):
+                success = True
                 print(f"[DISPATCHER] ✓ {event['event_type']} | {event['severity']} | {resp.status_code}")
+            else:
+                print(f"[DISPATCHER] Unexpected status {resp.status_code}: {resp.text[:120]}")
         except requests.exceptions.ConnectionError:
-            print("[DISPATCHER] ✗ Backend unreachable — event dropped (normal if API not running)")
+            print("[DISPATCHER] ✗ Backend unreachable — buffering event to outbox")
         except Exception as exc:
             print(f"[DISPATCHER] ✗ POST failed: {exc}")
+            
+        if not success:
+            try:
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.execute('''INSERT OR IGNORE INTO outbox 
+                                    (event_id, payload, evidence_path, created_at, retry_count, last_attempt, status) 
+                                    VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                                 (event_id, payload, str(evidence_path), now, 1, now, "Pending"))
+            except Exception as e:
+                print(f"[DISPATCHER] Outbox DB Error: {e}")

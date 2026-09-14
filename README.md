@@ -1,4 +1,4 @@
-﻿# CityVision — Mobile Urban Sensing & Road Anomaly Monitoring Platform
+# CityVision — Mobile Urban Sensing & Road Anomaly Monitoring Platform
 
 > *"Every Bus a Sensor. Every Road a Safer Path."*
 
@@ -8,7 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-00FFFF.svg)](https://github.com/ultralytics/ultralytics)
 [![Leaflet](https://img.shields.io/badge/Leaflet-GIS%20Mapping-199900.svg?logo=leaflet&logoColor=white)](https://leafletjs.com/)
-[![Tests](https://img.shields.io/badge/tests-78%20passing-brightgreen.svg)](#-automated-testing)
+[![Tests](https://img.shields.io/badge/tests-80%20passing-brightgreen.svg)](#-automated-testing)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **CityVision** (Smart India Hackathon — Problem Statement SIH26124) transforms routine public transit buses into intelligent, mobile urban sensing units. Dashcam sensors mounted on public buses continuously detect road surface anomalies (potholes, cracks, speed bumps), vehicle license plates, and traffic infrastructure signs, then GPS-tag, cross-correlate, and escalate verified road hazards to a municipal command center — automatically.
@@ -120,7 +120,7 @@ Traditional road maintenance relies on expensive physical surveys or slow citize
 | Feature | Detail |
 |---|---|
 | Design System | Municipal Sentinel Modern — Space Grotesk, Inter, JetBrains Mono |
-| 6 Operational Views | Home, Live Detection, Road Map, Reports, Bus Fleet, Analytics |
+| 8 Operational Views | Command Center, Live Detection, Road Map, Transport Authority (OD/Congestion), Field Ops Portal, Reports, Bus Fleet, Analytics |
 | PCI Gauge | Radial SVG Pavement Condition Index (ASTM D6433 adaptation) |
 | Scan Manager | Global persistent scan — survives tab switches, shows live events |
 | ANPR Badge | Indian Plate subsystem status badge in Live Detection view |
@@ -463,11 +463,11 @@ python -m edge.runner [OPTIONS]
 .\venv\Scripts\Activate.ps1
 $env:PYTHONPATH = "."
 
-# Run all 78 tests
+# Run all 80 tests
 python -m pytest tests/ -v
 
 # Run individual modules
-python -m pytest tests/test_edge_pipeline.py -v      # Edge AI pipeline (29 tests)
+python -m pytest tests/test_edge_pipeline.py -v      # Edge AI pipeline (32 tests)
 python -m pytest tests/test_scan_router.py -v        # Video scan job API (5 tests)
 python -m pytest tests/test_integration_full.py -v   # End-to-end fusion (44 tests)
 
@@ -477,7 +477,7 @@ python -m pytest tests/ -s      # Show stdout/print output
 python -m pytest tests/ --pdb   # Drop into debugger on failure
 ```
 
-**Current status: 78/78 tests passing.**
+**Current status: 80/80 tests passing.**
 
 Verify the frontend TypeScript compiles cleanly:
 
