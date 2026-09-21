@@ -1,0 +1,16 @@
+# Cloud-only requirements — excludes PyTorch/Ultralytics/OpenCV
+# The native YOLO runner is not supported in headless cloud environments.
+# The fallback synthetic pipeline handles all detections instead.
+# This keeps RAM usage under 200MB and build time under 3 minutes.
+
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+gunicorn>=21.2.0
+sqlalchemy>=2.0.0
+pydantic>=2.6.0
+python-multipart>=0.0.9
+reportlab>=4.0.0
+requests>=2.31.0
+numpy>=1.24.0
+Pillow>=10.0.0
+PyYAML>=6.0
