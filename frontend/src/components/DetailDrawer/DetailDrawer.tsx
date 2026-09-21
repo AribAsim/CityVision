@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import type { IncidentDetail, IncidentSummary } from '../../types'
-import { fetchIncidentDetail } from '../../services/api'
+import { fetchIncidentDetail, BASE_URL } from '../../services/api'
 import { ObservationList } from './ObservationList'
 import { StatusHistory } from './StatusHistory'
 import { StatusUpdater } from './StatusUpdater'
@@ -101,7 +101,7 @@ export const DetailDrawer: React.FC<DetailDrawerProps> = ({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <a
-            href={`http://localhost:8000/api/incidents/${data.incident_id}/report.pdf`}
+            href={`${BASE_URL}/api/incidents/${data.incident_id}/report.pdf`}
             target="_blank"
             rel="noreferrer"
             style={{

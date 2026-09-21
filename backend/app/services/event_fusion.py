@@ -145,7 +145,7 @@ def fuse_edge_event(
                 matched_incident.geom = ST_SetSRID(ST_MakePoint(matched_incident.longitude, matched_incident.latitude), 4326)
             matched_incident.last_detected_at = now
 
-            if final_image_url and not matched_incident.primary_image_url:
+            if final_image_url:
                 matched_incident.primary_image_url = final_image_url
 
             # Evaluate severity & priority score escalation

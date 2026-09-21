@@ -6,9 +6,10 @@ import type {
   IncidentStatus,
   IncidentSummary,
 } from '../types'
-
-const BASE_URL = ''
-
+const rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim()
+export const BASE_URL = rawBase
+  ? (rawBase.startsWith('http://') || rawBase.startsWith('https://') ? rawBase : `https://${rawBase}`).replace(/\/$/, '')
+  : ''
 export async function fetchIncidents(filters?: IncidentFilters): Promise<IncidentSummary[]> {
   const params = new URLSearchParams()
   if (filters?.status) params.append('status', filters.status)

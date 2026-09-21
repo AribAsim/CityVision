@@ -28,7 +28,9 @@ Visual overlay:
 from __future__ import annotations
 
 import argparse
+import queue
 import sys
+import time
 from pathlib import Path
 
 import cv2
@@ -42,11 +44,14 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from edge.anomaly_tracker import AnomalyTracker
+from edge.behavior_analyzer import check_hit_and_run, should_run_anpr, vru_proximity_risk
 from edge.bus_simulator import BusSimulator
+from edge.density_accumulator import DensityAccumulator, compute_segment_key
 from edge.detector import ANOMALY_CLASSES, RoadDetector
 from edge.event_builder import EventBuilder
 from edge.gps_simulator import GPSSimulator
 from edge.track_stitcher import TrackStitcher
+from edge.waterlogging_heuristic import detect_waterlogging
 
 
 def build_args() -> argparse.Namespace:
@@ -74,12 +79,18 @@ def build_args() -> argparse.Namespace:
                    help="Disable secondary license plate and OCR detection")
     p.add_argument("--no-infra", action="store_true",
                    help="Disable secondary traffic sign and infra detection")
+    p.add_argument("--no-waterlog", action="store_true",
+                   help="Disable waterlogging heuristic detection")
     p.add_argument("--benchmark", action="store_true",
                    help="Benchmark real inference latencies and FPS across models")
     return p.parse_args()
 
 
-def run(args: argparse.Namespace) -> None:
+def run(
+    args: argparse.Namespace,
+    frame_queue: queue.Queue | None = None,
+    on_dispatch: Any | None = None,
+) -> None:
     # ------------------------------------------------------------------
     # Initialise components
     # ------------------------------------------------------------------
@@ -152,6 +163,15 @@ def run(args: argparse.Namespace) -> None:
     total_completed_tracks = 0
     dispatched = 0
 
+    def _inc_dispatched():
+        nonlocal dispatched
+        dispatched += 1
+        if on_dispatch is not None:
+            try:
+                on_dispatch(dispatched)
+            except Exception:
+                pass
+
     # Timing metrics (ms)
     time_road_ms = []
     time_vehicle_ms = []
@@ -162,6 +182,35 @@ def run(args: argparse.Namespace) -> None:
     buffered_plates: list[dict] = []
     buffered_signs: list[dict] = []
 
+    # PS-Compliance: Density Accumulator, Behavior Analysis, ANPR trigger tracking
+    density_acc = DensityAccumulator()
+    current_segment: Optional[str] = None
+    anpr_trigger_frame: Optional[int] = None
+    from collections import deque
+    track_history: deque = deque(maxlen=60)
+
+    def _flush_density(seg: str, loc: Any) -> None:
+        if not seg:
+            return
+        payload = density_acc.flush(
+            segment_key=seg,
+            lat=loc.latitude,
+            lon=loc.longitude,
+            route_id=bus.route_id,
+            bus_id=bus.bus_id,
+        )
+        if not args.dry_run:
+            try:
+                import requests
+                telemetry_url = args.api.replace("/api/ingest", "/api/telemetry/density")
+                r = requests.post(telemetry_url, json=payload, timeout=3)
+                if r.status_code in (200, 201):
+                    print(f"[RUNNER] Flushed density for segment {seg}: {payload['total_count']} vehicles")
+            except Exception as e:
+                print(f"[RUNNER] Telemetry POST failed ({e}). Continuing.")
+        else:
+            print(f"[RUNNER] [DRY-RUN] Flushed density for segment {seg}: {payload['total_count']} vehicles")
+
     try:
         while True:
             ret, frame = cap.read()
@@ -171,6 +220,14 @@ def run(args: argparse.Namespace) -> None:
 
             # --- GPS location for this frame ---
             location = gps.get_location(frame_idx)
+            seg_key = compute_segment_key(bus.route_id, location.latitude, location.longitude)
+
+            # Check if entering a new segment cell
+            if current_segment is None:
+                current_segment = seg_key
+            elif seg_key != current_segment:
+                _flush_density(current_segment, location)
+                current_segment = seg_key
 
             # --- YOLO inference: Road Anomalies (Primary) ---
             t0 = time.perf_counter()
@@ -188,6 +245,8 @@ def run(args: argparse.Namespace) -> None:
                 vehicle_detections = vehicle_detector.detect(frame)
                 tv1 = time.perf_counter()
                 time_vehicle_ms.append((tv1 - tv0) * 1000.0)
+                # Accumulate into density buffer
+                density_acc.add_frame(seg_key, vehicle_detections)
 
             # --- Optional Secondary Perception: Traffic Signs / Infra ---
             infra_detections = []
@@ -203,9 +262,9 @@ def run(args: argparse.Namespace) -> None:
                         "bbox": [int(b) for b in idet.bbox],
                     })
 
-            # --- Optional Secondary Perception: ANPR ---
+            # --- Optional Secondary Perception: ANPR (Incident-Triggered) ---
             plate_reads = []
-            if anpr_pipeline is not None and frame_idx % 3 == 0:  # Sample every 3rd frame to conserve compute
+            if anpr_pipeline is not None and should_run_anpr(anpr_trigger_frame, frame_idx):
                 tp0 = time.perf_counter()
                 plate_reads = anpr_pipeline.process_frame(frame)
                 tp1 = time.perf_counter()
@@ -226,6 +285,17 @@ def run(args: argparse.Namespace) -> None:
                 frame_idx=frame_idx,
             )
 
+            # Record track snapshot for behavior analysis (Hit & Run candidate detection)
+            current_frame_tracks = []
+            for det in vehicle_detections:
+                current_frame_tracks.append({
+                    "track_id": hash(tuple(det.bbox)) % 10000,
+                    "class_name": det.class_name,
+                    "bbox": det.bbox,
+                    "confidence": det.confidence,
+                })
+            track_history.append({"frame_idx": frame_idx, "tracks": current_frame_tracks})
+
             # --- Motion-Compensated Track Stitching (Gap-Based) ---
             ready_to_dispatch = []
             for c_track in completed_tracks:
@@ -244,7 +314,7 @@ def run(args: argparse.Namespace) -> None:
                     nearby_signs=signs_to_send,
                 )
                 if event is not None:
-                    dispatched += 1
+                    _inc_dispatched()
                     buffered_plates.clear()
                     buffered_signs.clear()
 
@@ -260,17 +330,66 @@ def run(args: argparse.Namespace) -> None:
                     details={"speed_kmh": cur_spd},
                 )
                 if rash_evt:
-                    dispatched += 1
+                    _inc_dispatched()
+                    anpr_trigger_frame = frame_idx
+
+            # --- Behavior Analysis: VRU Proximity Risk ---
+            vru_risk = vru_proximity_risk(vehicle_detections, infra_detections, location)
+            if vru_risk:
+                vru_evt = event_builder.dispatch_safety_event(
+                    event_type=vru_risk["event_type"],
+                    location=location,
+                    frame=frame,
+                    confidence=vru_risk["confidence"],
+                    details=vru_risk["details"],
+                )
+                if vru_evt:
+                    _inc_dispatched()
+
+            # --- Behavior Analysis: Hit-and-Run Candidate Detection ---
+            hnr_candidate = check_hit_and_run(track_history)
+            if hnr_candidate:
+                hnr_evt = event_builder.dispatch_safety_event(
+                    event_type=hnr_candidate["event_type"],
+                    location=location,
+                    frame=frame,
+                    confidence=hnr_candidate["confidence"],
+                    details=hnr_candidate["details"],
+                )
+                if hnr_evt:
+                    _inc_dispatched()
+                    anpr_trigger_frame = frame_idx
+
+            # --- Waterlogging Heuristic (every 5th frame) ---
+            if not args.no_waterlog and frame_idx % 5 == 0:
+                wl_risk = detect_waterlogging(frame, location)
+                if wl_risk:
+                    wl_evt = event_builder.dispatch_safety_event(
+                        event_type=wl_risk["event_type"],
+                        location=location,
+                        frame=frame,
+                        confidence=wl_risk["confidence"],
+                        details=wl_risk["details"],
+                    )
+                    if wl_evt:
+                        _inc_dispatched()
 
             # --- Draw ALL boxes on preview frame ---
             display_frame = frame.copy()
             for det in all_detections:
-                x1, y1, x2, y2 = det.bbox
+                x1, y1, x2, y2 = [int(v) for v in det.bbox]
                 color = (0, 200, 0) if det.class_name in ANOMALY_CLASSES else (0, 200, 255)
                 cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 2)
                 label = f"{det.class_name} {det.confidence:.0%}"
                 cv2.putText(display_frame, label, (x1, max(y1 - 6, 14)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+            for vdet in vehicle_detections:
+                vx1, vy1, vx2, vy2 = [int(v) for v in vdet.bbox]
+                cv2.rectangle(display_frame, (vx1, vy1), (vx2, vy2), (255, 165, 0), 1)
+                vlabel = f"{vdet.class_name} {vdet.confidence:.0%}"
+                cv2.putText(display_frame, vlabel, (vx1, max(vy1 - 4, 12)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 165, 0), 1)
 
             # --- GPS overlay ---
             gps_text = f"GPS: {location.latitude:.5f},{location.longitude:.5f}  Hdg:{location.heading_deg:.0f}\u00b0"
@@ -280,8 +399,17 @@ def run(args: argparse.Namespace) -> None:
             cv2.putText(display_frame, bus_text, (10, 22),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
-            # --- Show preview ---
-            if not args.no_preview:
+            # --- Push to frame_queue for MJPEG streaming ---
+            if frame_queue is not None:
+                ok, jpeg_buf = cv2.imencode(".jpg", display_frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                if ok:
+                    try:
+                        frame_queue.put_nowait(bytes(jpeg_buf))
+                    except queue.Full:
+                        pass  # drop frame rather than stall pipeline
+
+            # --- Show preview window for CLI usage ---
+            if not args.no_preview and frame_queue is None:
                 cv2.imshow("SIH26124 Edge Pipeline", display_frame)
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord("q"):
@@ -289,6 +417,10 @@ def run(args: argparse.Namespace) -> None:
                     break
 
             frame_idx += 1
+
+        # Flush density for final segment
+        if current_segment is not None:
+            _flush_density(current_segment, location)
 
         # --- Flush remaining active tracks at end of stream ---
         eos_tracks = tracker.flush()
@@ -308,7 +440,7 @@ def run(args: argparse.Namespace) -> None:
                 nearby_signs=signs_to_send,
             )
             if event is not None:
-                dispatched += 1
+                _inc_dispatched()
                 buffered_plates.clear()
                 buffered_signs.clear()
 

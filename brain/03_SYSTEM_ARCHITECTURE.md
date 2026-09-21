@@ -189,41 +189,70 @@ d:\Al websites\sih2026-mvp\
 
 ---
 
-### Module 7: FastAPI Backend (`backend/`)
-- **Responsibility**: Central REST API, ingestion gateway, and background edge runner orchestration.
-- **Components**:
-  - Entrypoint: `backend/main.py` (`uvicorn backend.main:app`).
-  - `POST /api/ingest`: Accepts multipart `event_data` JSON and `image_file`.
-  - `POST /api/scan/start`: Accepts `.mp4` video upload, validates bus/route, and triggers `edge/runner.py` via an asynchronous background subprocess (`asyncio.create_subprocess_exec`).
-  - `GET /api/scan/status/{job_id}`: Returns real-time scan job status (`PROCESSING`, `COMPLETED`, `FAILED`) and live event dispatch counts.
-  - **Spatial Correlation**: Uses spatial radius check ($\approx 15$ meters) to determine if an incoming observation matches an existing open incident or creates a new one.
-  - **Verification Counters**: Computes and increments `confirmation_count` (total observations) and dynamically recalculates `unique_bus_count` (distinct reporting `bus_id`s).
-  - **Status Workflow**: Enforces strict lifecycle transitions:
-    $$\text{Pending} \longrightarrow \text{In Progress} \longrightarrow \text{Resolved}$$
-    *(Multi-bus verification is an indicator/badge, NOT a separate status).*
-  - `GET /api/incidents`: List incidents with status, severity, and type filters.
-  - `GET /api/incidents/{id}`: Full detail with chronological observation history.
-  - `PATCH /api/incidents/{id}/status`: Transition incident status.
-  - `GET /api/analytics/summary`: KPI metrics for Recharts widgets.
-  - Static file mount: Serves incident snapshots at `/static/snapshots/{filename}`.
+### Module 7: Behavior Analyzer (`edge/behavior_analyzer.py`)
+- **Responsibility**: Detects VRU proximity risks and hit-and-run candidates, gates ANPR inference.
+- **VRU Proximity Risk**: Computes Euclidean distance between pedestrian/cyclist bounding boxes and moving vehicle boxes in pixel space (< 110px) or on zebra crossings.
+- **Hit-and-Run Candidate**: Evaluates rolling 60-frame track history. Flags candidate if a pedestrian track vanishes post-proximity while a vehicle continues without decelerating.
+- **ANPR Gating**: Activates ANPR inference only for `ANPR_TRIGGER_FRAMES = 45` frames post rash driving or hit-and-run candidate detection.
 
 ---
 
-### Module 8: SQLite Database (`backend/database.py`)
+### Module 8: Density Accumulator (`edge/density_accumulator.py`)
+- **Responsibility**: Buffers vehicle detection counts into discrete ~250m GPS spatial cells (`f"{route_id}:{int(lat*200)/200:.3f}:{int(lon*200)/200:.3f}"`).
+- **Mechanism**: Computes peak concurrent vehicle counts per class across the segment window to avoid overcounting stationary objects across video frames.
+- **Flushing**: Dispatches batched summaries to `POST /api/telemetry/density` upon entering new spatial cell or at end-of-stream.
+
+---
+
+### Module 9: Waterlogging Heuristic (`edge/waterlogging_heuristic.py`)
+- **Responsibility**: Zero-model classical CV specular reflection detection.
+- **Mechanism**: Inspects lower 40% of the frame (road surface zone). Analyzes HSV color space for low saturation ($S < 45$) and high brightness ($V > 195$). Flags `Waterlogging-Candidate` if specular reflection exceeds 8% of total frame area.
+
+---
+
+### Module 10: FastAPI Backend (`backend/`)
+- **Responsibility**: Central REST API, ingestion gateway, analytics engine, and report generator.
+- **Components**:
+  - Entrypoint: `backend/main.py` (`uvicorn backend.app.main:app`).
+  - `POST /api/ingest`: Accepts multipart `event_data` JSON and `image_file`.
+  - `POST /api/telemetry/density`: Ingests batched vehicle density records and updates congestion indices.
+  - `GET /api/telemetry/density/bottlenecks`: Ranked congestion chokepoints.
+  - `GET /api/telemetry/density/delay`: Route travel time variance vs baseline.
+  - `GET /api/telemetry/density/od`: Origin-Destination vehicle volume matrix.
+  - `GET /api/reports/infrastructure-deficiency`: Audit summary of expected vs observed signage.
+  - `GET /api/reports/infrastructure-deficiency.pdf`: ReportLab PDF export.
+  - `GET /api/reports/route-performance.pdf`: ReportLab PDF export.
+  - `POST /api/scan/start`: Accepts `.mp4` video upload, validates bus/route, and triggers `edge/runner.py`.
+  - `GET /api/scan/status/{job_id}`: Returns real-time scan job status (`PROCESSING`, `COMPLETED`, `FAILED`).
+
+---
+
+### Module 11: SQLite Database (`backend/database.py`)
 - **Responsibility**: Embedded, portable storage (`sih26124.db`).
 - **Entities**:
   - `Incident`: Unique physical road anomaly entity.
   - `Observation`: Individual edge observation linked to parent `Incident`.
+  - `StatusHistory`: Audit log of lifecycle transitions.
+  - `Bus`: Fleet telemetry records.
+  - `PlateRead`: Incident-linked or safety-triggered ANPR reads.
+  - `InfraObservation`: Road sign and corridor infrastructure elements.
+  - `TrafficDensity`: Segment-level vehicle counts, class breakdown, and congestion index.
 
 ---
 
-### Module 9: React Frontend (`frontend/`)
-- **Responsibility**: Municipal authority command center.
-- **Tech Stack**: React 18, TypeScript, Vite, React Leaflet (OpenStreetMap), Recharts, TailwindCSS.
-- **Refresh Model**: Near-real-time via 4-second polling of `/api/incidents` and `/api/analytics/summary`.
+### Module 12: React Frontend (`frontend/`)
+- **Responsibility**: Command center and transport authority portals.
+- **Tech Stack**: React 19, TypeScript, Vite, MapLibre GL JS, React Leaflet (OpenStreetMap), Recharts.
 - **Key Features**:
-  - **Run Bus Scan Panel**: Compact upload and scan trigger mounted in the left triage panel. Allows uploading `.mp4` road video feeds, selecting simulated bus/route, triggering edge detection, and tracking progress live.
+  - **3-Button Role Switcher**: Command Center | Transport Authority | Field Official.
+  - **Transport Authority View**:
+    - MapLibre GL JS density heatmap with real-time intensity weights.
+    - Corridor chokepoints and bottlenecks table.
+    - Recharts route delay variance chart.
+    - Infrastructure deficiency audit table with one-click PDF export.
+    - Origin-Destination flow matrix table.
   - Interactive GIS map with severity-coded pins.
   - Priority triage feed showing severity pills, priority score (0–100), and "Verified by X Buses" badges.
   - Modal/drawer to inspect snapshots and historical observations.
   - One-click workflow transition (`Pending` $\rightarrow$ `In Progress` $\rightarrow$ `Resolved`).
+

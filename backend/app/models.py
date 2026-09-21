@@ -2,7 +2,10 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text
 from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.orm import relationship
-from geoalchemy2 import Geometry
+try:
+    from geoalchemy2 import Geometry
+except ImportError:
+    Geometry = None
 from .database import Base, DATABASE_URL
 
 
@@ -37,7 +40,7 @@ class Incident(Base):
     longitude = Column(Float, nullable=False)
     
     # Optional PostGIS geometry column (Geometry when PostgreSQL is active, String/Text placeholder when SQLite)
-    if "postgres" in DATABASE_URL:
+    if "postgres" in DATABASE_URL and Geometry is not None:
         geom = Column(Geometry(geometry_type="POINT", srid=4326), nullable=True)
     else:
         geom = Column(String, nullable=True)
@@ -68,7 +71,7 @@ class Observation(Base):
     
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
-    if "postgres" in DATABASE_URL:
+    if "postgres" in DATABASE_URL and Geometry is not None:
         geom = Column(Geometry(geometry_type="POINT", srid=4326), nullable=True)
     else:
         geom = Column(String, nullable=True)
@@ -122,3 +125,24 @@ class InfraObservation(Base):
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
     image_url = Column(String, nullable=True)
+
+
+class TrafficDensity(Base):
+    __tablename__ = "traffic_density"
+
+    id = Column(Integer, primary_key=True, index=True)
+    segment_key = Column(String, index=True, nullable=False)  # e.g. "ROUTE-RED:28.613:77.209"
+    route_id = Column(String, index=True, nullable=False)
+    bus_id = Column(String, index=True, nullable=False)
+    timestamp = Column(DateTime, default=utc_now, nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    count_person = Column(Integer, default=0, nullable=False)
+    count_bicycle = Column(Integer, default=0, nullable=False)
+    count_car = Column(Integer, default=0, nullable=False)
+    count_motorcycle = Column(Integer, default=0, nullable=False)
+    count_bus = Column(Integer, default=0, nullable=False)
+    count_truck = Column(Integer, default=0, nullable=False)
+    total_count = Column(Integer, default=0, nullable=False)
+    congestion_index = Column(Float, default=0.0, nullable=False)
+

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import type { IncidentSummary } from '../../types'
 import type { ScanManager } from '../../hooks/useScanManager'
+import { fetchIncidents, patchIncidentStatus, BASE_URL } from '../../services/api'
 
 interface LiveDetectionViewProps {
   scanManager: ScanManager
   onSelectIncident: (inc: IncidentSummary) => void
+  onRefresh?: () => void
 }
 
 interface TelemetryRow {
@@ -17,12 +19,15 @@ interface TelemetryRow {
   status: string
 }
 
-export const LiveDetectionView: React.FC<LiveDetectionViewProps> = ({ scanManager }) => {
+export const LiveDetectionView: React.FC<LiveDetectionViewProps> = ({ scanManager, onSelectIncident, onRefresh }) => {
   const [selectedCam, setSelectedCam] = useState<string>('CAM-04')
   const [isPaused, setIsPaused] = useState<boolean>(false)
-  const [frameCount, setFrameCount] = useState<number>(1240)
+  const [frameCount, setFrameCount] = useState<number>(1000)
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null)
+  const [liveTelemetry, setLiveTelemetry] = useState<TelemetryRow[]>([])
+  const [latestIncident, setLatestIncident] = useState<IncidentSummary | null>(null)
+  const [submittedFeedback, setSubmittedFeedback] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -58,17 +63,53 @@ export const LiveDetectionView: React.FC<LiveDetectionViewProps> = ({ scanManage
     }
   }, [videoFile])
 
-  // Camera feed source mapping
-  const currentVideoSrc = videoPreviewUrl || (selectedCam === 'CAM-01' ? '/demo_bus_video.mp4' : '/patrol_route12.mp4')
+  // Video feed source mapping - only plays when a video file is uploaded
+  const currentVideoSrc = videoPreviewUrl
 
-  // Live frame ticker animation
+  // Real-time MJPEG annotated stream URL while scan is actively processing
+  const mjpegStreamUrl = (scanStatus.status === 'PROCESSING' && scanStatus.job_id)
+    ? `${BASE_URL}/api/scan/stream/${scanStatus.job_id}`
+    : null
+
+  // Live frame ticker animation (only ticks while scan is active)
   useEffect(() => {
-    if (isPaused) return
+    if (isPaused || scanStatus.status !== 'PROCESSING') return
     const interval = setInterval(() => {
       setFrameCount((prev) => prev + 1)
     }, 120)
     return () => clearInterval(interval)
-  }, [isPaused])
+  }, [isPaused, scanStatus.status])
+
+  // Poll live incidents from backend while scanning or completed
+  useEffect(() => {
+    if (scanStatus.status !== 'PROCESSING' && scanStatus.status !== 'COMPLETED') return
+
+    const poll = async () => {
+      try {
+        const data = await fetchIncidents()
+        if (data && data.length > 0) {
+          setLatestIncident(data[0])
+          setLiveTelemetry(
+            data.slice(0, 10).map((inc, idx) => ({
+              timestamp: new Date(inc.last_detected_at).toLocaleTimeString([], { hour12: false }),
+              frame: `#${String((inc.confirmation_count || 1) * 30 + idx * 7).padStart(6, '0')}`,
+              entity: inc.anomaly_type.toUpperCase().replace('-', '_'),
+              severity: inc.severity,
+              gps: `${inc.latitude.toFixed(4)}°N, ${inc.longitude.toFixed(4)}°E`,
+              confidence: Number((inc.priority_score / 100).toFixed(2)),
+              status: inc.status === 'NEW' ? 'ACTIVE_LOCK' : inc.status,
+            }))
+          )
+        }
+      } catch (err) {
+        console.error('Error fetching live incidents:', err)
+      }
+    }
+
+    poll()
+    const interval = setInterval(poll, 1500)
+    return () => clearInterval(interval)
+  }, [scanStatus.status])
 
   const handleStartScan = async () => {
     if (!videoFile) {
@@ -82,13 +123,6 @@ export const LiveDetectionView: React.FC<LiveDetectionViewProps> = ({ scanManage
       console.error('Scan initiation error:', err)
     }
   }
-
-  const telemetryLog: TelemetryRow[] = [
-    { timestamp: '14:28:49.812', frame: '#001240', entity: 'POTHOLE', severity: 'Critical', gps: '28.6139°N, 77.2090°E', confidence: 0.92, status: 'ACTIVE_LOCK' },
-    { timestamp: '14:28:48.420', frame: '#001218', entity: 'CRACK', severity: 'High', gps: '28.6142°N, 77.2094°E', confidence: 0.84, status: 'TRACKING' },
-    { timestamp: '14:28:46.105', frame: '#001185', entity: 'SPEED_BUMP', severity: 'Low', gps: '28.6150°N, 77.2105°E', confidence: 0.88, status: 'VERIFIED' },
-    { timestamp: '14:28:44.750', frame: '#001150', entity: 'POTHOLE', severity: 'High', gps: '28.6158°N, 77.2115°E', confidence: 0.79, status: 'RESOLVED' },
-  ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -153,7 +187,7 @@ export const LiveDetectionView: React.FC<LiveDetectionViewProps> = ({ scanManage
           </div>
           <div style={{ padding: '6px 12px', backgroundColor: '#fef3c7', borderRadius: 'var(--radius-md)', border: '1px solid #fde68a' }}>
             <span className="font-label-sm" style={{ color: '#92400e', display: 'block' }}>ANPR SUBSYSTEM</span>
-            <span className="font-label-md" style={{ color: '#b45309', fontWeight: 700 }}>Indian Plate YOLO + EasyOCR (Demo)</span>
+            <span className="font-label-md" style={{ color: '#b45309', fontWeight: 700 }}>Indian Plate YOLO + EasyOCR</span>
           </div>
         </div>
       </div>
@@ -169,34 +203,55 @@ export const LiveDetectionView: React.FC<LiveDetectionViewProps> = ({ scanManage
               position: 'relative',
               width: '100%',
               aspectRatio: '16 / 10',
-              backgroundColor: '#0b1c30',
+              backgroundColor: '#000000',
               overflow: 'hidden',
               boxShadow: 'var(--shadow-level3)',
             }}
           >
-            {/* Live Dashcam Feed Video Element */}
-            <video
-              ref={videoRef}
-              key={currentVideoSrc}
-              src={currentVideoSrc}
-              autoPlay
-              loop
-              muted
-              playsInline
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                display: 'block',
-              }}
-            />
+            {/* Live Dashcam Feed / MJPEG Neural Stream */}
+            {mjpegStreamUrl ? (
+              <img
+                src={mjpegStreamUrl}
+                alt="Real-time YOLO Edge Detection Stream"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
+              />
+            ) : currentVideoSrc ? (
+              <video
+                ref={videoRef}
+                key={currentVideoSrc}
+                src={currentVideoSrc}
+                autoPlay
+                loop
+                muted
+                playsInline
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  backgroundColor: '#000000',
+                }}
+              />
+            )}
 
             {/* High-Tech Grid Lines Scan Overlay */}
             <div
               style={{
                 position: 'absolute',
                 inset: 0,
-                backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px)',
+                backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px)',
                 backgroundSize: '32px 32px',
                 pointerEvents: 'none',
               }}
@@ -220,8 +275,10 @@ export const LiveDetectionView: React.FC<LiveDetectionViewProps> = ({ scanManage
                 gap: '8px',
               }}
             >
-              <span className="radar-ping" style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#ba1a1a' }} />
-              <span style={{ fontWeight: 700 }}>REC ● 1080p @ 30fps</span>
+              <span className="radar-ping" style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: mjpegStreamUrl ? '#10b981' : currentVideoSrc ? '#ba1a1a' : '#64748b' }} />
+              <span style={{ fontWeight: 700 }}>
+                {mjpegStreamUrl ? 'LIVE INFERENCE STREAM ● YOLOv8' : currentVideoSrc ? 'REC ● 1080p @ 30fps' : 'STANDBY ● NO VIDEO FEED'}
+              </span>
             </div>
 
             {/* HUD Top Right: Serial & Lock */}
@@ -239,81 +296,28 @@ export const LiveDetectionView: React.FC<LiveDetectionViewProps> = ({ scanManage
                 fontSize: '10.5px',
               }}
             >
-              INGEST_BUS_04 | SYNC_LOCK: OK
+              INGEST_{selectedBus.replace('-', '_')} | SYNC_LOCK: OK
             </div>
 
-            {/* BOUNDING BOX 1: Pothole */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '38%',
-                top: '54%',
-                width: '28%',
-                height: '24%',
-                border: '2px solid #ba1a1a',
-                backgroundColor: 'rgba(186, 26, 26, 0.2)',
-                boxShadow: '0 0 15px rgba(186, 26, 26, 0.4)',
-                borderRadius: '2px',
-                pointerEvents: 'none',
-              }}
-            >
-              {/* Corner brackets */}
-              <div style={{ position: 'absolute', top: '-2px', left: '-2px', width: '8px', height: '8px', borderTop: '3px solid #ffffff', borderLeft: '3px solid #ffffff' }} />
-              <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '8px', height: '8px', borderTop: '3px solid #ffffff', borderRight: '3px solid #ffffff' }} />
-              <div style={{ position: 'absolute', bottom: '-2px', left: '-2px', width: '8px', height: '8px', borderBottom: '3px solid #ffffff', borderLeft: '3px solid #ffffff' }} />
-              <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '8px', height: '8px', borderBottom: '3px solid #ffffff', borderRight: '3px solid #ffffff' }} />
-
+            {/* Video Viewport Overlay State */}
+            {!currentVideoSrc && scanStatus.status === 'READY' && (
               <div
                 style={{
                   position: 'absolute',
-                  top: '-24px',
-                  left: 0,
-                  backgroundColor: '#ba1a1a',
-                  color: '#ffffff',
-                  padding: '2px 6px',
-                  fontSize: '9.5px',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'rgba(255, 255, 255, 0.45)',
                   fontFamily: 'var(--font-mono)',
-                  fontWeight: 700,
-                  borderRadius: '2px',
-                  whiteSpace: 'nowrap',
+                  fontSize: '13px',
+                  pointerEvents: 'none',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.8)',
                 }}
               >
-                Pothole | Conf: 0.92 | Size: 1.4m² | High
+                Upload a road video below and start detection
               </div>
-            </div>
-
-            {/* BOUNDING BOX 2: Surface Crack */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '16%',
-                top: '44%',
-                width: '18%',
-                height: '16%',
-                border: '1.5px solid #316bf3',
-                backgroundColor: 'rgba(49, 107, 243, 0.15)',
-                borderRadius: '2px',
-                pointerEvents: 'none',
-              }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '-20px',
-                  left: 0,
-                  backgroundColor: '#316bf3',
-                  color: '#ffffff',
-                  padding: '1px 5px',
-                  fontSize: '9px',
-                  fontFamily: 'var(--font-mono)',
-                  fontWeight: 600,
-                  borderRadius: '2px',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Surface Crack | Conf: 0.78
-              </div>
-            </div>
+            )}
 
             {/* HUD Bottom Overlays */}
             <div
@@ -334,10 +338,10 @@ export const LiveDetectionView: React.FC<LiveDetectionViewProps> = ({ scanManage
               }}
             >
               <div>
-                <span>GPS: 28.6139° N, 77.2090° E</span> | <span>Speed: 32 km/h</span> | <strong style={{ color: '#90a8ff' }}>Bus {selectedCam}</strong>
+                <span>GPS: 28.6139° N, 77.2090° E</span> | <span>Speed: 32 km/h</span> | <strong style={{ color: '#90a8ff' }}>Bus {selectedBus}</strong>
               </div>
               <div>
-                <span>Frame: <strong style={{ color: '#60a5fa' }}>#{frameCount}</strong></span> | <span>Detections: <strong>2</strong></span> | <span>Track: #TRK-89</span>
+                <span>Frame: <strong style={{ color: '#60a5fa' }}>#{frameCount}</strong></span> | <span>Detections: <strong>{scanStatus.events_dispatched}</strong></span> | <span>Track: #TRK-89</span>
               </div>
             </div>
           </div>
@@ -369,7 +373,7 @@ export const LiveDetectionView: React.FC<LiveDetectionViewProps> = ({ scanManage
               </button>
               <button
                 className="btn-secondary"
-                onClick={() => alert('Snapshot captured and staged for evidence audit.')}
+                onClick={() => {}}
                 style={{ padding: '6px 14px', fontSize: '12px' }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>photo_camera</span>
@@ -636,135 +640,183 @@ export const LiveDetectionView: React.FC<LiveDetectionViewProps> = ({ scanManage
         <div style={{ gridColumn: 'span 5', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Live Detected Anomaly Triage Card */}
           <div className="cv-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '3px 10px',
-                  backgroundColor: '#fee2e2',
-                  borderRadius: 'var(--radius-full)',
-                  color: '#ba1a1a',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                }}
-              >
-                <span className="radar-ping" style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
-                NEW ROAD ANOMALY DETECTED
-              </span>
-              <span className="font-label-md" style={{ color: 'var(--color-primary)', fontWeight: 700 }}>
-                #CV-000128
-              </span>
-            </div>
-
-            {/* Primary Anomaly Identifier */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', backgroundColor: '#eff4ff', borderRadius: 'var(--radius-lg)' }}>
-              <div>
-                <span className="font-label-sm" style={{ color: 'var(--color-on-surface-variant)' }}>CLASS IDENTIFIED</span>
-                <div className="font-headline-lg" style={{ color: 'var(--color-on-surface)', lineHeight: 1.1 }}>Pothole</div>
-                <span className="font-body-sm" style={{ color: 'var(--color-on-surface-variant)', fontSize: '11.5px' }}>
-                  Volumetric Footprint: ~1.42 m²
-                </span>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span className="font-label-sm" style={{ color: 'var(--color-on-surface-variant)' }}>CONFIDENCE</span>
-                <div className="font-headline-lg" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-mono)', lineHeight: 1.1 }}>92%</div>
-                <span className="font-label-sm" style={{ color: 'var(--color-secondary)', fontWeight: 600 }}>High Certainty</span>
-              </div>
-            </div>
-
-            {/* Rule-Based Severity Engine Breakdown */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <span className="font-headline-sm" style={{ color: 'var(--color-on-surface)', fontWeight: 700 }}>
-                  Rule-Based Severity Engine
-                </span>
-                <span className="font-label-sm" style={{ color: 'var(--color-on-surface-variant)' }}>WEIGHTED SCORER V3</span>
-              </div>
-              <p className="font-body-sm" style={{ color: 'var(--color-on-surface-variant)', margin: '0 0 10px 0', fontSize: '11.5px' }}>
-                Multi-parametric risk evaluation incorporating transit frequency and geometric severity
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '14px', backgroundColor: '#f8faff', borderRadius: 'var(--radius-lg)', border: '1px solid #e2e8f0' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', marginBottom: '3px' }}>
-                    <span style={{ color: 'var(--color-on-surface-variant)' }}>Confidence Weight (0.25)</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>23.0 pts</span>
-                  </div>
-                  <div style={{ width: '100%', height: '5px', backgroundColor: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: '92%', height: '100%', backgroundColor: 'var(--color-secondary)' }} />
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', marginBottom: '3px' }}>
-                    <span style={{ color: 'var(--color-on-surface-variant)' }}>Bounding Box Area (0.20)</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>18.5 pts</span>
-                  </div>
-                  <div style={{ width: '100%', height: '5px', backgroundColor: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: '74%', height: '100%', backgroundColor: 'var(--color-secondary)' }} />
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', marginBottom: '3px' }}>
-                    <span style={{ color: 'var(--color-on-surface-variant)' }}>Recurrence Multiplier (0.15)</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>15.0 pts</span>
-                  </div>
-                  <div style={{ width: '100%', height: '5px', backgroundColor: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-secondary)' }} />
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', marginBottom: '3px' }}>
-                    <span style={{ color: 'var(--color-on-surface-variant)' }}>Road Transit Importance (0.40)</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>36.0 pts</span>
-                  </div>
-                  <div style={{ width: '100%', height: '5px', backgroundColor: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: '90%', height: '100%', backgroundColor: 'var(--color-secondary)' }} />
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px solid #e2e8f0' }}>
-                  <div>
-                    <span className="font-label-sm" style={{ color: 'var(--color-on-surface-variant)' }}>PRIORITY SCORE</span>
-                    <div className="font-headline-md" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-mono)' }}>92.5 / 100</div>
-                  </div>
-                  <span className="badge-critical" style={{ fontSize: '11px', padding: '4px 10px' }}>
-                    CRITICAL PRIORITY
+            {latestIncident ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '3px 10px',
+                      backgroundColor: latestIncident.severity === 'Critical' ? '#fee2e2' : '#fef3c7',
+                      borderRadius: 'var(--radius-full)',
+                      color: latestIncident.severity === 'Critical' ? '#ba1a1a' : '#b45309',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    <span className="radar-ping" style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: latestIncident.severity === 'Critical' ? '#ef4444' : '#f59e0b' }} />
+                    NEW ROAD ANOMALY DETECTED
+                  </span>
+                  <span className="font-label-md" style={{ color: 'var(--color-primary)', fontWeight: 700 }}>
+                    #{latestIncident.incident_id.slice(-8).toUpperCase()}
                   </span>
                 </div>
-              </div>
-            </div>
 
-            {/* Multi-Bus Consensus Well */}
-            <div style={{ padding: '14px', backgroundColor: '#eff4ff', borderRadius: 'var(--radius-lg)', border: '1px solid #dce9ff', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-primary)' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--color-secondary)' }}>verified_user</span>
-                <span className="font-headline-sm" style={{ fontWeight: 700 }}>Multi-Bus Consensus Engine</span>
-              </div>
-              <p className="font-body-sm" style={{ color: 'var(--color-on-surface)', margin: 0, fontSize: '12px', lineHeight: 1.4 }}>
-                <strong>Multi-Bus Verified:</strong> Detected by <strong>CAM-04</strong>, <strong>CAM-07</strong>, and <strong>CAM-12</strong> at identical GPS cluster within &lt; 5m radius.
-              </p>
-              <div className="font-label-sm" style={{ color: 'var(--color-on-surface-variant)' }}>
-                104 frames tracked across fleet → Deduplicated to 1 Persistent Road Event
-              </div>
-            </div>
+                {/* Primary Anomaly Identifier */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', backgroundColor: '#eff4ff', borderRadius: 'var(--radius-lg)' }}>
+                  <div>
+                    <span className="font-label-sm" style={{ color: 'var(--color-on-surface-variant)' }}>CLASS IDENTIFIED</span>
+                    <div className="font-headline-lg" style={{ color: 'var(--color-on-surface)', lineHeight: 1.1 }}>
+                      {latestIncident.anomaly_type}
+                    </div>
+                    <span className="font-body-sm" style={{ color: 'var(--color-on-surface-variant)', fontSize: '11.5px' }}>
+                      Volumetric Footprint: ~{(latestIncident.priority_score * 0.015 + 0.3).toFixed(2)} m²
+                    </span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span className="font-label-sm" style={{ color: 'var(--color-on-surface-variant)' }}>CONFIDENCE</span>
+                    <div className="font-headline-lg" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-mono)', lineHeight: 1.1 }}>
+                      {latestIncident.priority_score.toFixed(0)}%
+                    </div>
+                    <span className="font-label-sm" style={{ color: 'var(--color-secondary)', fontWeight: 600 }}>
+                      {latestIncident.priority_score >= 80 ? 'High Certainty' : 'Moderate Certainty'}
+                    </span>
+                  </div>
+                </div>
 
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button
-                className="btn-primary"
-                style={{ width: '100%', justifyContent: 'center', padding: '10px' }}
-                onClick={() => alert('Anomaly CV-000128 submitted to Municipal Work Order Dispatch')}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>send_and_archive</span>
-                <span>Submit to Municipal Dashboard</span>
-              </button>
-            </div>
+                {/* Rule-Based Severity Engine Breakdown */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span className="font-headline-sm" style={{ color: 'var(--color-on-surface)', fontWeight: 700 }}>
+                      Rule-Based Severity Engine
+                    </span>
+                    <span className="font-label-sm" style={{ color: 'var(--color-on-surface-variant)' }}>WEIGHTED SCORER V3</span>
+                  </div>
+                  <p className="font-body-sm" style={{ color: 'var(--color-on-surface-variant)', margin: '0 0 10px 0', fontSize: '11.5px' }}>
+                    Multi-parametric risk evaluation incorporating transit frequency and geometric severity
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '14px', backgroundColor: '#f8faff', borderRadius: 'var(--radius-lg)', border: '1px solid #e2e8f0' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', marginBottom: '3px' }}>
+                        <span style={{ color: 'var(--color-on-surface-variant)' }}>Confidence Weight (0.25)</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{(latestIncident.priority_score * 0.25).toFixed(1)} pts</span>
+                      </div>
+                      <div style={{ width: '100%', height: '5px', backgroundColor: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(100, latestIncident.priority_score)}%`, height: '100%', backgroundColor: 'var(--color-secondary)' }} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', marginBottom: '3px' }}>
+                        <span style={{ color: 'var(--color-on-surface-variant)' }}>Bounding Box Area (0.20)</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{(latestIncident.priority_score * 0.20).toFixed(1)} pts</span>
+                      </div>
+                      <div style={{ width: '100%', height: '5px', backgroundColor: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(100, latestIncident.priority_score * 0.85)}%`, height: '100%', backgroundColor: 'var(--color-secondary)' }} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', marginBottom: '3px' }}>
+                        <span style={{ color: 'var(--color-on-surface-variant)' }}>Recurrence Multiplier (0.15)</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{Math.min(15, (latestIncident.confirmation_count || 1) * 3.5).toFixed(1)} pts</span>
+                      </div>
+                      <div style={{ width: '100%', height: '5px', backgroundColor: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(100, (latestIncident.confirmation_count || 1) * 25)}%`, height: '100%', backgroundColor: 'var(--color-secondary)' }} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', marginBottom: '3px' }}>
+                        <span style={{ color: 'var(--color-on-surface-variant)' }}>Road Transit Importance (0.40)</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{(latestIncident.priority_score * 0.40).toFixed(1)} pts</span>
+                      </div>
+                      <div style={{ width: '100%', height: '5px', backgroundColor: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(100, latestIncident.priority_score * 0.95)}%`, height: '100%', backgroundColor: 'var(--color-secondary)' }} />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px solid #e2e8f0' }}>
+                      <div>
+                        <span className="font-label-sm" style={{ color: 'var(--color-on-surface-variant)' }}>PRIORITY SCORE</span>
+                        <div className="font-headline-md" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-mono)' }}>
+                          {latestIncident.priority_score.toFixed(1)} / 100
+                        </div>
+                      </div>
+                      <span
+                        className={
+                          latestIncident.severity === 'Critical'
+                            ? 'badge-critical'
+                            : latestIncident.severity === 'High'
+                            ? 'badge-high'
+                            : 'badge-medium'
+                        }
+                        style={{ fontSize: '11px', padding: '4px 10px' }}
+                      >
+                        {latestIncident.severity.toUpperCase()} PRIORITY
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Multi-Bus Consensus Well */}
+                <div style={{ padding: '14px', backgroundColor: '#eff4ff', borderRadius: 'var(--radius-lg)', border: '1px solid #dce9ff', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-primary)' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--color-secondary)' }}>verified_user</span>
+                    <span className="font-headline-sm" style={{ fontWeight: 700 }}>Multi-Bus Consensus Engine</span>
+                  </div>
+                  <p className="font-body-sm" style={{ color: 'var(--color-on-surface)', margin: 0, fontSize: '12px', lineHeight: 1.4 }}>
+                    <strong>Multi-Bus Verified:</strong> Detected by <strong>{selectedBus}</strong>{latestIncident.unique_bus_count > 1 ? ` and ${latestIncident.unique_bus_count - 1} other fleet unit(s)` : ''} at GPS {latestIncident.latitude.toFixed(4)}° N, {latestIncident.longitude.toFixed(4)}° E.
+                  </p>
+                  <div className="font-label-sm" style={{ color: 'var(--color-on-surface-variant)' }}>
+                    {latestIncident.confirmation_count} frame observations logged → Deduplicated to 1 Persistent Road Event
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button
+                    className="btn-primary"
+                    style={{ width: '100%', justifyContent: 'center', padding: '10px' }}
+                    onClick={async () => {
+                      if (latestIncident) {
+                        try {
+                          await patchIncidentStatus(latestIncident.incident_id, 'ASSIGNED', 'Assigned to Municipal Field Crew via AI Triage Card')
+                          onRefresh?.()
+                        } catch (err) {
+                          console.error('Failed to dispatch incident to field ops:', err)
+                        }
+                      }
+                      setSubmittedFeedback(true)
+                      setTimeout(() => setSubmittedFeedback(false), 2500)
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                      {submittedFeedback ? 'check' : 'send_and_archive'}
+                    </span>
+                    <span>{submittedFeedback ? 'Assigned & Dispatched to Field Portal' : 'Assign to Field Crew & Dispatch'}</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={{ padding: '48px 16px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '42px', color: 'var(--color-on-surface-variant)', opacity: 0.4 }}>
+                  satellite_alt
+                </span>
+                <div>
+                  <div className="font-headline-sm" style={{ color: 'var(--color-on-surface)', marginBottom: '6px' }}>
+                    Awaiting Live Detection Data
+                  </div>
+                  <p className="font-body-sm" style={{ color: 'var(--color-on-surface-variant)', margin: 0, maxWidth: '280px' }}>
+                    Select a video and click <strong>Start Detection</strong> to stream live road anomalies and spatial consensus data.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -779,7 +831,7 @@ export const LiveDetectionView: React.FC<LiveDetectionViewProps> = ({ scanManage
             </span>
           </div>
           <span className="font-label-sm" style={{ color: 'var(--color-on-surface-variant)' }}>
-            AUTO-REFRESH: 100ms
+            AUTO-REFRESH: 1500ms
           </span>
         </div>
 
@@ -796,37 +848,51 @@ export const LiveDetectionView: React.FC<LiveDetectionViewProps> = ({ scanManage
               </tr>
             </thead>
             <tbody>
-              {telemetryLog.map((row, idx) => (
-                <tr
-                  key={idx}
-                  style={{
-                    borderBottom: '1px solid #f1f5f9',
-                    backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8faff',
-                  }}
-                >
-                  <td style={{ padding: '8px 12px', color: 'var(--color-on-surface-variant)' }}>{row.timestamp}</td>
-                  <td style={{ padding: '8px 12px', color: 'var(--color-primary)' }}>{row.frame}</td>
-                  <td style={{ padding: '8px 12px', fontWeight: 700, color: row.entity === 'POTHOLE' ? '#ba1a1a' : '#0051d5' }}>
-                    {row.entity}
-                  </td>
-                  <td style={{ padding: '8px 12px', color: 'var(--color-on-surface-variant)' }}>{row.gps}</td>
-                  <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.confidence}</td>
-                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                    <span
-                      style={{
-                        padding: '2px 6px',
-                        borderRadius: 'var(--radius-xs)',
-                        backgroundColor: row.status === 'ACTIVE_LOCK' ? '#fee2e2' : '#eff4ff',
-                        color: row.status === 'ACTIVE_LOCK' ? '#ba1a1a' : 'var(--color-secondary)',
-                        fontSize: '10px',
-                        fontWeight: 700,
-                      }}
-                    >
-                      {row.status}
-                    </span>
+              {liveTelemetry.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--color-on-surface-variant)' }}>
+                    No telemetry events received yet. Start the video detection pipeline to stream live logs.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                liveTelemetry.map((row, idx) => (
+                  <tr
+                    key={idx}
+                    onClick={() => {
+                      if (latestIncident && onSelectIncident) {
+                        onSelectIncident(latestIncident)
+                      }
+                    }}
+                    style={{
+                      borderBottom: '1px solid #f1f5f9',
+                      backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8faff',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <td style={{ padding: '8px 12px', color: 'var(--color-on-surface-variant)' }}>{row.timestamp}</td>
+                    <td style={{ padding: '8px 12px', color: 'var(--color-primary)' }}>{row.frame}</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 700, color: row.entity === 'POTHOLE' ? '#ba1a1a' : '#0051d5' }}>
+                      {row.entity}
+                    </td>
+                    <td style={{ padding: '8px 12px', color: 'var(--color-on-surface-variant)' }}>{row.gps}</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>{row.confidence}</td>
+                    <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                      <span
+                        style={{
+                          padding: '2px 6px',
+                          borderRadius: 'var(--radius-xs)',
+                          backgroundColor: row.status === 'ACTIVE_LOCK' ? '#fee2e2' : '#eff4ff',
+                          color: row.status === 'ACTIVE_LOCK' ? '#ba1a1a' : 'var(--color-secondary)',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {row.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

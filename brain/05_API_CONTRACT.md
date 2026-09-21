@@ -55,7 +55,50 @@ This document details the implemented REST API endpoints for the SIH26124 backen
 
 ---
 
-## 3. Road Defect Incidents
+## 3. Traffic Density & Corridor Telemetry
+
+### `POST /api/telemetry/density`
+- **Description**: Ingests batched segment density observations (~250m GPS cells) from the edge pipeline. Automatically computes congestion index based on corridor baseline capacity.
+- **Request Body**: `VehicleDensityCreate`
+- **Response**: `201 Created` (`VehicleDensityResponse`)
+
+### `GET /api/telemetry/density`
+- **Query Params**: `route_id` (optional), `hours` (default: 24), `limit` (default: 200)
+- **Response**: `200 OK` (list of `VehicleDensityResponse`)
+
+### `GET /api/telemetry/density/bottlenecks`
+- **Query Params**: `route_id` (optional), `top_n` (default: 5)
+- **Response**: `200 OK` (list of ranked congestion chokepoints with congestion index, coordinates, and status)
+
+### `GET /api/telemetry/density/delay`
+- **Query Params**: `route_id` (default: "ROUTE-RED")
+- **Response**: `200 OK` (`baseline_minutes`, `actual_minutes`, `delay_minutes`, `status`, `avg_congestion_index`)
+
+### `GET /api/telemetry/density/od`
+- **Query Params**: `route_id` (optional)
+- **Response**: `200 OK` (list of origin-destination transitions with estimated volume and average congestion)
+
+---
+
+## 4. Infrastructure Audits & Reports
+
+### `GET /api/reports/infrastructure-deficiency`
+- **Query Params**: `route_id` (optional)
+- **Response**: `200 OK` (audit comparison of expected vs observed signs/assets with deficiency score)
+
+### `GET /api/reports/infrastructure-deficiency.pdf`
+- **Response**: `200 OK` (`application/pdf` binary download)
+
+### `GET /api/reports/route-performance`
+- **Query Params**: `route_id`
+- **Response**: `200 OK` (route travel time variance and delay metrics)
+
+### `GET /api/reports/route-performance.pdf`
+- **Response**: `200 OK` (`application/pdf` binary download)
+
+---
+
+## 5. Road Defect Incidents
 
 ### `GET /api/incidents`
 - **Description**: Retrieves road defect incidents sorted by most recent observation timestamp (`last_detected_at` descending).

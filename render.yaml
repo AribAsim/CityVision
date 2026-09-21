@@ -1,0 +1,40 @@
+services:
+  # -------------------------------------------------------------------------
+  # 1. CityVision FastAPI Backend Web Service
+  # -------------------------------------------------------------------------
+  - type: web
+    name: cityvision-backend
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: DATABASE_URL
+        value: sqlite:///./sih26124.db
+
+  # -------------------------------------------------------------------------
+  # 2. CityVision React Dashboard (Vite SPA) Static Site
+  # -------------------------------------------------------------------------
+  - type: web
+    name: cityvision-frontend
+    runtime: static
+    plan: free
+    region: oregon
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: cityvision-backend
+          property: host

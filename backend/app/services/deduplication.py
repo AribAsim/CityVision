@@ -2,7 +2,10 @@ import math
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 from sqlalchemy.orm import Session
-import geoalchemy2
+try:
+    import geoalchemy2
+except ImportError:
+    geoalchemy2 = None
 from .. import models
 
 

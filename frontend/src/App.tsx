@@ -4,7 +4,7 @@ import { useIncidents } from './hooks/useIncidents'
 import { useAnalytics } from './hooks/useAnalytics'
 import { useBuses } from './hooks/useBuses'
 import { useScanManager } from './hooks/useScanManager'
-import { Sidebar, type NavTab } from './components/Navigation/Sidebar'
+import { Sidebar, type NavTab, type UserRole } from './components/Navigation/Sidebar'
 import { TopHeader } from './components/Navigation/TopHeader'
 import { HomeView } from './components/Views/HomeView'
 import { LiveDetectionView } from './components/Views/LiveDetectionView'
@@ -18,6 +18,7 @@ import { DetailDrawer } from './components/DetailDrawer/DetailDrawer'
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<NavTab>('home')
+  const [activeRole, setActiveRole] = useState<UserRole>('command_center')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [selectedIncident, setSelectedIncident] = useState<IncidentSummary | null>(null)
   const [lastSyncTime, setLastSyncTime] = useState<string>('Just now')
@@ -62,6 +63,7 @@ export const App: React.FC = () => {
         activeBusesCount={activeBusesCount}
         isScanProcessing={scanManager.scanStatus.status === 'PROCESSING'}
         scanEventsCount={scanManager.scanStatus.events_dispatched}
+        activeRole={activeRole}
       />
 
       {/* 2. Main Content Area */}
@@ -75,6 +77,8 @@ export const App: React.FC = () => {
           onSearchChange={setSearchQuery}
           scanManager={scanManager}
           onNavigateTab={setCurrentTab}
+          activeRole={activeRole}
+          onRoleChange={setActiveRole}
         />
 
         {/* Dynamic Main View */}
@@ -93,6 +97,7 @@ export const App: React.FC = () => {
             <LiveDetectionView
               scanManager={scanManager}
               onSelectIncident={setSelectedIncident}
+              onRefresh={handleRefreshAll}
             />
           )}
 

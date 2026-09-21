@@ -6,10 +6,19 @@ Compliant with Windows environments (no GTK/WeasyPrint requirements).
 """
 import io
 from datetime import datetime, timezone
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    HAS_REPORTLAB = True
+except ImportError:
+    HAS_REPORTLAB = False
+    colors = None
+    letter = None
+    SimpleDocTemplate = Paragraph = Spacer = Table = TableStyle = None
+    getSampleStyleSheet = ParagraphStyle = None
+
 from .. import models
 
 
@@ -17,6 +26,8 @@ def generate_incident_pdf(incident: models.Incident) -> bytes:
     """
     Generate a formal Municipal PWD Road Defect Inspection & Work Order PDF.
     """
+    if not HAS_REPORTLAB:
+        raise RuntimeError("reportlab is not installed. Please install reportlab to generate PDFs.")
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
     story = []
@@ -107,3 +118,136 @@ def generate_incident_pdf(incident: models.Incident) -> bytes:
 
     doc.build(story)
     return buf.getvalue()
+
+
+def generate_infra_deficiency_report(data: list) -> bytes:
+    """
+    Generates a formal Infrastructure Deficiency & Missing Assets PDF Report.
+    """
+    if not HAS_REPORTLAB:
+        raise RuntimeError("reportlab is not installed. Please install reportlab to generate PDFs.")
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    story = []
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "TitleStyle",
+        parent=styles["Heading1"],
+        fontSize=18,
+        leading=22,
+        textColor=colors.HexColor("#00236f"),
+        spaceAfter=4,
+    )
+    subtitle_style = ParagraphStyle(
+        "SubTitleStyle",
+        parent=styles["Normal"],
+        fontSize=9,
+        textColor=colors.HexColor("#555555"),
+        spaceAfter=12,
+    )
+    heading2_style = ParagraphStyle(
+        "H2Style",
+        parent=styles["Heading2"],
+        fontSize=11,
+        leading=15,
+        textColor=colors.HexColor("#1e3a8a"),
+        spaceBefore=8,
+        spaceAfter=6,
+    )
+    normal_style = styles["Normal"]
+
+    story.append(Paragraph("MUNICIPAL TRANSPORT GRID — INFRASTRUCTURE DEFICIENCY AUDIT", title_style))
+    story.append(Paragraph(f"CityVision Platform // Corridor Compliance Report // Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}", subtitle_style))
+    story.append(Spacer(1, 8))
+
+    table_data = [["Route Corridor", "Expected Assets", "Observed Assets", "Missing Count", "Deficiency Score", "Compliance Rating"]]
+    for item in data:
+        table_data.append([
+            item.get("route_id", "Unknown"),
+            str(item.get("expected_assets", 0)),
+            str(item.get("observed_assets", 0)),
+            str(item.get("missing_assets", 0)),
+            f"{item.get('deficiency_score', 0):.1f}%",
+            item.get("status", "Unknown"),
+        ])
+
+    t = Table(table_data, colWidths=[110, 85, 85, 80, 85, 95])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e3a8a")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d0d5dd")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
+        ("PADDING", (0, 0), (-1, -1), 5),
+        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 14))
+
+    story.append(Paragraph("Recommended Corrective Actions:", heading2_style))
+    story.append(Paragraph("1. Priority deployment of missing pedestrian crossing / zebra signage along Route Red.", normal_style))
+    story.append(Paragraph("2. Replacement of damaged speed limit signboards on Route Blue corridor.", normal_style))
+    story.append(Paragraph("3. Schedule field inspection for verified deficiency corridors within 7 business days.", normal_style))
+    story.append(Spacer(1, 20))
+    story.append(Paragraph("<b>Auditor Signature:</b> ___________________________   <b>Authority Seal:</b> ____________", normal_style))
+
+    doc.build(story)
+    return buf.getvalue()
+
+
+def generate_route_performance_report(data: dict) -> bytes:
+    """
+    Generates a formal Transit Corridor Performance & Congestion PDF Report.
+    """
+    if not HAS_REPORTLAB:
+        raise RuntimeError("reportlab is not installed. Please install reportlab to generate PDFs.")
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    story = []
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "TitleStyle",
+        parent=styles["Heading1"],
+        fontSize=18,
+        leading=22,
+        textColor=colors.HexColor("#00236f"),
+        spaceAfter=4,
+    )
+    subtitle_style = ParagraphStyle(
+        "SubTitleStyle",
+        parent=styles["Normal"],
+        fontSize=9,
+        textColor=colors.HexColor("#555555"),
+        spaceAfter=12,
+    )
+    normal_style = styles["Normal"]
+
+    story.append(Paragraph("TRANSIT AUTHORITY — ROUTE PERFORMANCE & DELAY REPORT", title_style))
+    story.append(Paragraph(f"CityVision Platform // Corridor Analysis // Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}", subtitle_style))
+    story.append(Spacer(1, 8))
+
+    overview = [
+        [Paragraph("<b>Route Corridor:</b>", normal_style), Paragraph(str(data.get("route_id", "N/A")), normal_style)],
+        [Paragraph("<b>Baseline Transit Time:</b>", normal_style), Paragraph(f"{data.get('baseline_minutes', 0)} mins", normal_style)],
+        [Paragraph("<b>Actual Observed Transit Time:</b>", normal_style), Paragraph(f"{data.get('actual_minutes', 0)} mins", normal_style)],
+        [Paragraph("<b>Delay Variance:</b>", normal_style), Paragraph(f"+{data.get('delay_minutes', 0)} mins", normal_style)],
+        [Paragraph("<b>Corridor Status:</b>", normal_style), Paragraph(str(data.get("status", "Nominal")), normal_style)],
+        [Paragraph("<b>Mean Congestion Index:</b>", normal_style), Paragraph(str(data.get("avg_congestion_index", 1.0)), normal_style)],
+        [Paragraph("<b>Sample Data Points:</b>", normal_style), Paragraph(str(data.get("sample_count", 0)), normal_style)],
+    ]
+
+    t = Table(overview, colWidths=[180, 360])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8f9ff")),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d0d5dd")),
+        ("PADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 16))
+
+    story.append(Paragraph("<b>Transport Commissioner Signature:</b> ___________________________", normal_style))
+
+    doc.build(story)
+    return buf.getvalue()
+

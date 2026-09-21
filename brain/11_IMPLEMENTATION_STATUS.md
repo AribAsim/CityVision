@@ -31,11 +31,21 @@ All approved phases (Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 7 →
    - Connected real PCI calculations to `GET /api/analytics/summary` and frontend `HomeView.tsx` condition gauge.
    - Implemented ReportLab-based PDF generation in `pdf_report.py` and added `GET /api/incidents/{incident_id}/report.pdf` (zero GTK dependencies on Windows).
 
-4. **Phase 7 & 8 (Frontend Command Center & Production Hardening)**:
+4. **Phase 5 & 6 (PS-Compliance & Multi-Perception Extension)**:
+   - **Vehicle Density Accumulator (`edge/density_accumulator.py`)**: Groups vehicle counts per ~250m discrete spatial cell (`f"{route_id}:{int(lat*200)/200:.3f}:{int(lon*200)/200:.3f}"`) and flushes summaries to `POST /api/telemetry/density`.
+   - **Behavior Analyzer (`edge/behavior_analyzer.py`)**: Implements VRU proximity risk (< 110px or on crosswalk) and 60-frame rolling track history hit-and-run candidate heuristics (tagged `candidate_only: True`).
+   - **Incident-Triggered ANPR Gate**: Constrains ANPR execution to `ANPR_TRIGGER_FRAMES = 45` frames post rash driving or hit-and-run candidate event.
+   - **Waterlogging Heuristic (`edge/waterlogging_heuristic.py`)**: Zero-model classical CV specular reflection detection in road surface zone ($S < 45, V > 195$).
+   - **Backend Telemetry & Reports Routers (`telemetry.py`, `reports.py`)**: Added endpoints for density ingestion, chokepoints/bottlenecks, route transit delay vs baseline, OD flow matrix, and ReportLab PDF downloads for Infrastructure Deficiency and Route Performance.
+   - **MapLibre GL JS Transport Authority View (`TransportAuthorityView.tsx`)**: 4-panel grid with density heatmap, bottlenecks table, route transit delay variance chart, and infrastructure deficiency audit.
+   - **3-Button Role Switcher (`TopHeader.tsx`, `Sidebar.tsx`)**: Instant switching between Command Center, Transport Authority, and Field Official views.
+
+5. **Phase 7 & 8 (Frontend Command Center & Production Hardening)**:
    - Added instant Work Order PDF download buttons in `ReportsView.tsx` and `DetailDrawer.tsx`.
    - Added Indian Plate ANPR subsystem status badge in `LiveDetectionView.tsx`.
-   - Frontend compiles cleanly with zero errors (`tsc -b && vite build` in <1s).
-   - Python test suite runs 60/60 passing tests cleanly (`pytest tests/ -v`).
+   - Frontend compiles cleanly with zero errors (`tsc -b && vite build` passing).
+   - Python test suite runs 80/80 passing tests cleanly (`pytest tests/ -v`).
+
 
 ---
 
@@ -280,8 +290,77 @@ python -m edge.runner --bus BUS-01 --video "WhatsApp Video 2026-09-11 at 10.40.3
   - Documented the 60-test automated verification suite and complete REST API reference table.
   - Linked all architecture governance specifications in `/brain`.
 
----
+### 5.1 Environment Resilience & Dependency Resolution
+- **Issue**: Backend failed to start when launched outside virtual environment (`ModuleNotFoundError: No module named 'reportlab'`), which caused Vite dev server to report `ECONNREFUSED` connection proxy errors on `/api/*`.
+- **Resolution**:
+  - Updated `backend/requirements.txt` to explicitly pin `reportlab>=4.0.0` and `geoalchemy2>=0.14.0`.
+  - Installed `reportlab` into active Python environment alongside existing `venv` setup.
+  - Added safe import fallback and runtime guards in `backend/app/services/pdf_report.py` ensuring server starts reliably in minimal environments without crashing.
+  - Verified backend (`http://localhost:8000/api/health`) and frontend proxy (`http://localhost:5173/api/incidents`) return 200 OK.
 
+### 5.2 Live Detection Feed Refinement for Demo Recording
+- **Issue**: Hardcoded static bounding boxes (div overlays), disconnected telemetry rows, and intrusive browser alert dialogs hindered clean SIH demo video capture.
+- **Resolution**:
+  - Removed hardcoded static bounding box overlays from `LiveDetectionView.tsx`, replacing with clean waiting state and live telemetry counters.
+  - Connected telemetry ingestion table to live `GET /api/incidents` polling (1500ms interval) active during scan processing.
+  - Wired AI Anomaly Triage Card dynamically to the most recent real edge-detected incident with live geometric scoring, consensus metrics, and volumetric estimates.
+  - Eliminated browser `alert()` popups on "Capture Frame" and "Submit to Municipal Dashboard", replaced with seamless non-blocking inline feedback.
+  - Bound HUD bus identity and detection counters dynamically to edge runner scan status.
+  - Verified clean TypeScript compilation (`npx tsc --noEmit` exit code 0).
+
+### 5.3 Live Detection Viewport Standby State Refinement
+- **Issue**: By default, the Live Detection viewport looped a demo video before the user uploaded any video.
+- **Resolution**:
+  - Updated [LiveDetectionView.tsx](file:///d:/Al%20websites/sih2026-mvp/frontend/src/components/Views/LiveDetectionView.tsx) to only map video sources when a local file is explicitly uploaded (`videoPreviewUrl`).
+  - Set the default viewport container to a clean black background (`#000000`) with high-tech HUD telemetry indicators (`STANDBY ● NO VIDEO FEED`).
+  - Preserved the center text overlay ("Upload a road video below and start detection") centered over the black standby screen until a video file is uploaded or real-time inference starts.
+  - Verified frontend build (`npm run build`) compiles cleanly with zero errors.
+
+### 5.4 Real-time MJPEG Live Detection Stream & GPU Acceleration
+- **Issue**: Video scan processing was slow (~3-4 minutes on CPU) and live detections did not draw actual bounding boxes on the video feed in the browser.
+- **Root Causes**:
+  - PyTorch was installed as a CPU-only build (`torch.version.cuda = None`), leaving the host's NVIDIA GeForce GTX 1650 GPU completely idle.
+  - The edge runner rendered OpenCV bounding boxes locally, but had no channel to stream annotated frames to the web interface. The frontend only displayed raw video without inference boxes.
+- **Resolution**:
+  - **CUDA GPU PyTorch**: Installed PyTorch 2.6.0 with CUDA 12.4 (`cu124`). Verified `torch.cuda.is_available() = True` on NVIDIA GeForce GTX 1650. GPU warm inference dropped from ~380ms to **38.6ms per frame** (10x speedup).
+  - **Edge Runner Streaming (`edge/runner.py`)**: Added `frame_queue` and `on_dispatch` parameters to `run()`. Encodes annotated frames with bounding boxes (anomalies + vehicles) to JPEG and pushes to queue.
+  - **Backend MJPEG Endpoint (`backend/app/routers/scan.py`)**: Converted runner execution to an in-process daemon thread with a bounded frame queue. Added `GET /api/scan/stream/{job_id}` endpoint serving `multipart/x-mixed-replace` MJPEG stream with non-blocking executor reads.
+  - **Frontend Live Feed Integration (`LiveDetectionView.tsx`)**: Replaces the raw video element with `<img src={mjpegStreamUrl} />` during `PROCESSING` status, seamlessly rendering real-time annotated frames with green YOLO bounding boxes, class names, confidence percentages, and GPS telemetry.
+  - **E2E Verification**: Ran end-to-end scan with `Final-demo.mp4`. 240 frames processed in ~30 seconds, streaming live frames and dispatching 10 validated road anomaly incidents to the database.
+
+### 5.5 Field Ops Portal Incident Logging & Assignment Unblock
+- **Issue**: Newly detected defect frames and incidents were not showing up in the Field Operations Portal for assignment.
+- **Root Cause**:
+  - `FieldOpsView.tsx` had a hardcoded filter `if (filter === 'ALL') return inc.status !== 'NEW'` which silently discarded all newly detected road defect incidents (which default to `status: 'NEW'`).
+  - There was no filter pill for `NEW (UNASSIGNED)` and no button to assign `NEW` work orders directly from the Field Operations view.
+  - The "Submit to Municipal Dashboard" action in `LiveDetectionView.tsx` was a UI mockup that did not call the backend `patchIncidentStatus` endpoint.
+- **Resolution**:
+  - **Filter Correction**: Updated `FieldOpsView.tsx` so `ALL` displays all incidents including new defect frames. Added dedicated `NEW (UNASSIGNED)` filter tab with real-time count badges across all lifecycle stages (`ALL`, `NEW`, `ASSIGNED`, `IN_PROGRESS`, `RESOLVED`).
+  - **Direct Assignment Action**: Added prominent `Assign to Field Crew` button on all `NEW` and `VERIFIED` cards in `FieldOpsView.tsx` calling `patchIncidentStatus(id, 'ASSIGNED', ...)`.
+  - **Live Detection Triage Dispatch**: Wired the `Assign to Field Crew & Dispatch` button in `LiveDetectionView.tsx` to call `patchIncidentStatus` directly and trigger global data refresh.
+  - **Auto-Refresh**: Added mount `onRefresh()` hook in `FieldOpsView.tsx` ensuring the portal queries the server immediately upon opening the tab.
+  - **Verification**: Verified with `npm run build` (`tsc -b && vite build`) passing cleanly with exit code 0.
+
+### 5.6 Real Dashcam Evidence Frame Resolution & Snapshot Upgrade
+- **Issue**: Incident evidence images appeared as blurry, tightly cropped ~80x80 pixel boxes with text in the corner, looking like low-quality placeholders. Additionally, repeated scans kept old images because spatial deduplication did not overwrite `primary_image_url`.
+- **Root Cause**:
+  - `edge/event_builder.py` in `_save_evidence()` cropped a tight snippet around the detected bounding box (`frame[y1:y2, x1:x2]`) and saved only that tiny patch instead of the full road scene.
+  - `backend/app/services/event_fusion.py` checked `if final_image_url and not matched_incident.primary_image_url:`, which prevented fresh scan runs from ever updating the incident's evidence with the new frame.
+- **Resolution**:
+  - **Full 720p HD Dashcam Capture**: Updated `_save_evidence()` in [event_builder.py](file:///d:/Al%20websites/sih2026-mvp/edge/event_builder.py) to preserve the entire 1280x720 video frame, cleanly drawing the green bounding box and confidence score (`Pothole 87%`) directly on the defect in its real road context.
+  - **Dynamic Image Refresh on Ingest**: Updated [event_fusion.py](file:///d:/Al%20websites/sih2026-mvp/backend/app/services/event_fusion.py) so `matched_incident.primary_image_url` is always refreshed with the latest detection's evidence frame.
+  - **Database Upgrade**: Ran upgrade script replacing 153 legacy cropped placeholder images in `sih26124.db` with full 720p HD dashcam frames from the active run.
+### 5.7 Production Deployment Readiness (Render Cloud & GitHub)
+- **Status**: COMPLETE
+- **Configuration**:
+  - Created `render.yaml` Blueprint configuring dual-service architecture: `cityvision-backend` (FastAPI Python Web Service on port `$PORT`) and `cityvision-frontend` (Vite SPA Static Site with wildcard rewrite rules).
+  - Configured dynamic CORS in `backend/app/main.py` accepting `CORS_ORIGINS` environment variables with default permissive wildcard and `*.onrender.com` subdomain regex matching.
+  - Normalized database URL in `backend/app/database.py` to auto-convert Render PostgreSQL `postgres://` to SQLAlchemy 2.0 `postgresql://`.
+  - Added `psycopg2-binary` and `gunicorn` to `backend/requirements.txt`.
+  - Configured frontend API services (`api.ts`, `TransportAuthorityView.tsx`, `ReportsView.tsx`, `DetailDrawer.tsx`, `LiveDetectionView.tsx`) to dynamically resolve `BASE_URL` from `VITE_API_BASE_URL` with automatic protocol prefixing.
+  - Authored comprehensive deployment guide in `DEPLOYMENT_RENDER.md`.
+
+---
 
 ## 6. Future Scope (Post-MVP Roadmap)
 

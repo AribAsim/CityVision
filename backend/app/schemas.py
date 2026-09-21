@@ -182,3 +182,44 @@ class ScanStatusResponse(BaseModel):
     events_dispatched: int = 0
     error: Optional[str] = None
 
+
+# --- Telemetry & Traffic Density Schemas ---
+class VehicleDensityCreate(BaseModel):
+    segment_key: str
+    route_id: str
+    bus_id: str
+    timestamp: Optional[datetime] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    count_person: int = 0
+    count_bicycle: int = 0
+    count_car: int = 0
+    count_motorcycle: int = 0
+    count_bus: int = 0
+    count_truck: int = 0
+    total_count: int = 0
+
+
+class VehicleDensityResponse(BaseModel):
+    id: int
+    segment_key: str
+    route_id: str
+    bus_id: str
+    timestamp: datetime
+    latitude: float
+    longitude: float
+    count_person: int
+    count_bicycle: int
+    count_car: int
+    count_motorcycle: int
+    count_bus: int
+    count_truck: int
+    total_count: int
+    congestion_index: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+

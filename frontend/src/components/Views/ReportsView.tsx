@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import type { IncidentSummary, IncidentStatus } from '../../types'
-import { patchIncidentStatus } from '../../services/api'
+import { patchIncidentStatus, BASE_URL } from '../../services/api'
 import { SEED_RECENT_INCIDENTS } from '../../services/seedData'
 
 interface ReportsViewProps {
@@ -310,7 +310,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                       <a
-                        href={`http://localhost:8000/api/incidents/${inc.incident_id}/report.pdf`}
+                        href={`${BASE_URL}/api/incidents/${inc.incident_id}/report.pdf`}
                         target="_blank"
                         rel="noreferrer"
                         className="btn-secondary"

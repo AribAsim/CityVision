@@ -1,6 +1,7 @@
 import React from 'react'
 
 export type NavTab = 'home' | 'live-detection' | 'road-map' | 'transport-authority' | 'field-ops' | 'reports' | 'bus-fleet' | 'analytics'
+export type UserRole = 'command_center' | 'transport_authority' | 'field_official'
 
 interface SidebarProps {
   activeTab: NavTab
@@ -8,6 +9,7 @@ interface SidebarProps {
   activeBusesCount: number
   isScanProcessing?: boolean
   scanEventsCount?: number
+  activeRole?: UserRole
 }
 
 interface NavItem {
@@ -15,17 +17,18 @@ interface NavItem {
   label: string
   icon: string
   badge?: string
+  roles?: UserRole[]
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'home', label: 'Command Center', icon: 'grid_view' },
-  { id: 'live-detection', label: 'Live Detection', icon: 'videocam', badge: 'LIVE' },
-  { id: 'road-map', label: 'Geospatial Road Map', icon: 'map' },
-  { id: 'transport-authority', label: 'Transport Corridor', icon: 'traffic', badge: 'OD' },
-  { id: 'field-ops', label: 'Field Ops Portal', icon: 'handyman' },
-  { id: 'reports', label: 'Reports & Work Orders', icon: 'assignment_late' },
-  { id: 'bus-fleet', label: 'Bus Fleet Telemetry', icon: 'directions_bus' },
-  { id: 'analytics', label: 'Analytics & KPIs', icon: 'insights' },
+  { id: 'home', label: 'Command Center', icon: 'grid_view', roles: ['command_center'] },
+  { id: 'live-detection', label: 'Live Detection', icon: 'videocam', badge: 'LIVE', roles: ['command_center'] },
+  { id: 'road-map', label: 'Geospatial Road Map', icon: 'map', roles: ['command_center'] },
+  { id: 'transport-authority', label: 'Transport Authority', icon: 'traffic', badge: 'OD', roles: ['command_center', 'transport_authority'] },
+  { id: 'field-ops', label: 'Field Ops Portal', icon: 'handyman', roles: ['command_center', 'field_official'] },
+  { id: 'reports', label: 'Reports & Work Orders', icon: 'assignment_late', roles: ['command_center', 'transport_authority'] },
+  { id: 'bus-fleet', label: 'Bus Fleet Telemetry', icon: 'directions_bus', roles: ['command_center', 'transport_authority'] },
+  { id: 'analytics', label: 'Analytics & KPIs', icon: 'insights', roles: ['command_center', 'transport_authority'] },
 ]
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -34,7 +37,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeBusesCount,
   isScanProcessing,
   scanEventsCount = 0,
+  activeRole = 'command_center',
 }) => {
+  const visibleNavItems = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(activeRole))
   return (
     <aside
       style={{
@@ -135,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Navigation List */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '0 12px' }}>
-          {NAV_ITEMS.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = activeTab === item.id
             return (
               <button

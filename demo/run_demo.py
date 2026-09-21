@@ -131,12 +131,35 @@ def main():
         time.sleep(delay)
         transition_status(api_base, inc_id, "RESOLVED", "Auto-demo: Pothole patched and verified.")
         
-        print("\nDemo complete! The map pin should now be Green.")
-    else:
-        print("\n--- PHASE 3: MANUAL LIFECYCLE RESOLUTION ---")
-        print("To complete the demo, click on the incident card in the dashboard.")
-        print("Use the 'Operational Resolution Actions' buttons in the drawer to advance the incident to RESOLVED.")
-        
+    print("\n--- PHASE 4: SEEDING CORRIDOR TRAFFIC DENSITY & BOTTLENECKS ---")
+    print("Posting synthetic density observations for Route Red, Route Blue, and Route Green...")
+    density_samples = [
+        # ROUTE-RED (Central Arterial: High/Critical peak volume 42)
+        {"segment_key": "ROUTE-RED:28.613:77.209", "route_id": "ROUTE-RED", "bus_id": "BUS-01", "lat": 28.6139, "lon": 77.2090, "count_car": 26, "count_motorcycle": 8, "count_bus": 4, "count_truck": 2, "count_person": 2, "total_count": 42},
+        {"segment_key": "ROUTE-RED:28.625:77.218", "route_id": "ROUTE-RED", "bus_id": "BUS-01", "lat": 28.6250, "lon": 77.2180, "count_car": 22, "count_motorcycle": 6, "count_bus": 3, "count_truck": 1, "count_person": 1, "total_count": 33},
+        {"segment_key": "ROUTE-RED:28.638:77.228", "route_id": "ROUTE-RED", "bus_id": "BUS-01", "lat": 28.6380, "lon": 77.2280, "count_car": 18, "count_motorcycle": 5, "count_bus": 2, "count_truck": 1, "count_person": 0, "total_count": 26},
+
+        # ROUTE-BLUE (Ring Corridor: Moderate volume 27)
+        {"segment_key": "ROUTE-BLUE:28.570:77.256", "route_id": "ROUTE-BLUE", "bus_id": "BUS-02", "lat": 28.5708, "lon": 77.2562, "count_car": 16, "count_motorcycle": 6, "count_bus": 3, "count_truck": 1, "count_person": 1, "total_count": 27},
+        {"segment_key": "ROUTE-BLUE:28.580:77.265", "route_id": "ROUTE-BLUE", "bus_id": "BUS-02", "lat": 28.5800, "lon": 77.2650, "count_car": 12, "count_motorcycle": 4, "count_bus": 2, "count_truck": 1, "count_person": 0, "total_count": 19},
+        {"segment_key": "ROUTE-BLUE:28.592:77.275", "route_id": "ROUTE-BLUE", "bus_id": "BUS-02", "lat": 28.5920, "lon": 77.2750, "count_car": 10, "count_motorcycle": 3, "count_bus": 1, "count_truck": 0, "count_person": 0, "total_count": 14},
+
+        # ROUTE-GREEN (Suburban Spine: Low volume 11)
+        {"segment_key": "ROUTE-GREEN:28.520:77.180", "route_id": "ROUTE-GREEN", "bus_id": "BUS-03", "lat": 28.5200, "lon": 77.1800, "count_car": 6, "count_motorcycle": 2, "count_bus": 2, "count_truck": 1, "count_person": 0, "total_count": 11},
+        {"segment_key": "ROUTE-GREEN:28.530:77.190", "route_id": "ROUTE-GREEN", "bus_id": "BUS-03", "lat": 28.5300, "lon": 77.1900, "count_car": 5, "count_motorcycle": 2, "count_bus": 1, "count_truck": 0, "count_person": 0, "total_count": 8},
+        {"segment_key": "ROUTE-GREEN:28.540:77.200", "route_id": "ROUTE-GREEN", "bus_id": "BUS-03", "lat": 28.5400, "lon": 77.2000, "count_car": 4, "count_motorcycle": 1, "count_bus": 1, "count_truck": 0, "count_person": 0, "total_count": 6},
+    ]
+
+    for d in density_samples:
+        try:
+            r = requests.post(f"{api_base}/telemetry/density", json=d, timeout=3)
+            if r.status_code in (200, 201):
+                print(f"  [OK] Density seeded for {d['segment_key']} (Total: {d['total_count']} veh)")
+        except Exception as e:
+            print(f"  [!] Failed to seed density: {e}")
+
+    print("\nTransport Authority view and congestion heatmap seeded successfully!")
+
     print("\n==================================================")
     print(" DEMO FINISHED")
     print("==================================================")

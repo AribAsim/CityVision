@@ -404,25 +404,26 @@ class EventBuilder:
         cls: str,
         score: float,
     ) -> Path:
-        x1, y1, x2, y2 = det.bbox
-        # Add small padding without going OOB
-        h, w = frame.shape[:2]
-        pad = 10
-        x1c = max(x1 - pad, 0)
-        y1c = max(y1 - pad, 0)
-        x2c = min(x2 + pad, w)
-        y2c = min(y2 + pad, h)
-
-        # Also draw bounding box on the snippet for clarity
-        snippet = frame[y1c:y2c, x1c:x2c].copy()
+        x1, y1, x2, y2 = [int(v) for v in det.bbox]
+        # Preserve full contextual frame from dashcam with bounding box
+        evidence_frame = frame.copy()
+        color = (0, 255, 0) if cls in {"Pothole", "Crack", "Crack-Severe", "Speed-Bump"} else (0, 200, 255)
+        cv2.rectangle(evidence_frame, (x1, y1), (x2, y2), color, 3)
         label = f"{cls} {det.confidence:.0%}"
-        cv2.putText(snippet, label, (4, 18), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.55, (0, 255, 0), 2)
+        cv2.putText(
+            evidence_frame,
+            label,
+            (x1, max(y1 - 10, 25)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            color,
+            2,
+        )
 
         ts = int(time.time() * 1000)
         fname = f"{cls.replace('-', '_')}_{ts}.jpg"
         fpath = self.evidence_dir / fname
-        cv2.imwrite(str(fpath), snippet, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        cv2.imwrite(str(fpath), evidence_frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
         return fpath
 
     def _post(self, event: dict, evidence_path: Path) -> None:

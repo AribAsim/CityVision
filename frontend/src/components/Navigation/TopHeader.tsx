@@ -2,6 +2,8 @@ import React from 'react'
 import type { ScanManager } from '../../hooks/useScanManager'
 import type { NavTab } from './Sidebar'
 
+export type UserRole = 'command_center' | 'transport_authority' | 'field_official'
+
 interface TopHeaderProps {
   activeBusesCount: number
   lastUpdated: string
@@ -10,6 +12,8 @@ interface TopHeaderProps {
   onSearchChange: (q: string) => void
   scanManager?: ScanManager
   onNavigateTab?: (tab: NavTab) => void
+  activeRole?: UserRole
+  onRoleChange?: (role: UserRole) => void
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
@@ -20,6 +24,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onSearchChange,
   scanManager,
   onNavigateTab,
+  activeRole = 'command_center',
+  onRoleChange,
 }) => {
   return (
     <header
@@ -129,6 +135,79 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               </span>
             </button>
           )}
+        </div>
+
+        {/* 3-Button Role Switcher */}
+        <div
+          style={{
+            display: 'inline-flex',
+            backgroundColor: '#f1f5f9',
+            padding: '3px',
+            borderRadius: '8px',
+            border: '1px solid #e2e8f0',
+            gap: '2px',
+          }}
+        >
+          <button
+            id="role-btn-command-center"
+            onClick={() => {
+              onRoleChange?.('command_center')
+              onNavigateTab?.('home')
+            }}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '6px',
+              border: 'none',
+              fontSize: '11px',
+              fontWeight: activeRole === 'command_center' ? 700 : 500,
+              cursor: 'pointer',
+              backgroundColor: activeRole === 'command_center' ? '#1e3a8a' : 'transparent',
+              color: activeRole === 'command_center' ? '#ffffff' : '#64748b',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            Command Center
+          </button>
+          <button
+            id="role-btn-transport-authority"
+            onClick={() => {
+              onRoleChange?.('transport_authority')
+              onNavigateTab?.('transport-authority')
+            }}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '6px',
+              border: 'none',
+              fontSize: '11px',
+              fontWeight: activeRole === 'transport_authority' ? 700 : 500,
+              cursor: 'pointer',
+              backgroundColor: activeRole === 'transport_authority' ? '#1e3a8a' : 'transparent',
+              color: activeRole === 'transport_authority' ? '#ffffff' : '#64748b',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            Transport Authority
+          </button>
+          <button
+            id="role-btn-field-official"
+            onClick={() => {
+              onRoleChange?.('field_official')
+              onNavigateTab?.('field-ops')
+            }}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '6px',
+              border: 'none',
+              fontSize: '11px',
+              fontWeight: activeRole === 'field_official' ? 700 : 500,
+              cursor: 'pointer',
+              backgroundColor: activeRole === 'field_official' ? '#1e3a8a' : 'transparent',
+              color: activeRole === 'field_official' ? '#ffffff' : '#64748b',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            Field Official
+          </button>
         </div>
       </div>
 

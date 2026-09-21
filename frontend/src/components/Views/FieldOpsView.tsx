@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import type { IncidentSummary } from '../../types'
 import { patchIncidentStatus } from '../../services/api'
 
@@ -13,16 +13,33 @@ export const FieldOpsView: React.FC<FieldOpsViewProps> = ({
   onSelectIncident,
   onRefresh,
 }) => {
-  const [filter, setFilter] = useState<'ALL' | 'ASSIGNED' | 'IN_PROGRESS' | 'RESOLVED'>('ALL')
+  const [filter, setFilter] = useState<'ALL' | 'NEW' | 'ASSIGNED' | 'IN_PROGRESS' | 'RESOLVED'>('ALL')
   const [submittingId, setSubmittingId] = useState<string | null>(null)
   const [resolutionNote, setResolutionNote] = useState<string>('')
   const [activeResolvingId, setActiveResolvingId] = useState<string | null>(null)
 
-  // Filter incidents for field operations
+  // Immediately refresh incidents upon opening Field Ops Portal
+  useEffect(() => {
+    onRefresh()
+  }, [])
+
+  // Filter incidents for field operations - ALL shows all incidents including newly logged frames
   const fieldIncidents = incidents.filter((inc) => {
-    if (filter === 'ALL') return inc.status !== 'NEW'
+    if (filter === 'ALL') return true
     return inc.status === filter
   })
+
+  const handleAssignWork = async (incidentId: string) => {
+    try {
+      setSubmittingId(incidentId)
+      await patchIncidentStatus(incidentId, 'ASSIGNED', 'Assigned to Field Ops Crew for remediation')
+      onRefresh()
+    } catch (err: any) {
+      alert(`Failed to assign: ${err.message || err}`)
+    } finally {
+      setSubmittingId(null)
+    }
+  }
 
   const handleResolve = async (incidentId: string) => {
     try {
@@ -93,24 +110,42 @@ export const FieldOpsView: React.FC<FieldOpsViewProps> = ({
 
         {/* Filter Pills */}
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          {(['ALL', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: 600,
-                border: '1px solid #cbd5e1',
-                backgroundColor: filter === f ? '#0051d5' : '#ffffff',
-                color: filter === f ? '#ffffff' : '#475569',
-                cursor: 'pointer',
-              }}
-            >
-              {f.replace('_', ' ')}
-            </button>
-          ))}
+          {(['ALL', 'NEW', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED'] as const).map((f) => {
+            const count = incidents.filter((inc) => (f === 'ALL' ? true : inc.status === f)).length
+            return (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: filter === f ? '#0051d5' : '#ffffff',
+                  color: filter === f ? '#ffffff' : '#475569',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>{f === 'NEW' ? 'NEW (UNASSIGNED)' : f.replace('_', ' ')}</span>
+                <span
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    padding: '1px 5px',
+                    borderRadius: '10px',
+                    backgroundColor: filter === f ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                    color: filter === f ? '#ffffff' : '#475569',
+                  }}
+                >
+                  {count}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -208,12 +243,36 @@ export const FieldOpsView: React.FC<FieldOpsViewProps> = ({
 
                 {/* Snapshot preview if available */}
                 {inc.primary_image_url && (
-                  <div style={{ marginTop: '10px', height: '120px', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#f1f5f9' }}>
+                  <div style={{ marginTop: '10px', aspectRatio: '16 / 9', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#0b1c30', position: 'relative' }}>
                     <img
                       src={inc.primary_image_url}
                       alt="Hazard Evidence"
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
                     />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: '6px',
+                        left: '8px',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        backgroundColor: 'rgba(11, 28, 48, 0.75)',
+                        backdropFilter: 'blur(4px)',
+                        color: '#34d399',
+                        fontFamily: 'JetBrains Mono, monospace',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981' }} />
+                      <span>ONBOARD SNAPSHOT</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -260,7 +319,33 @@ export const FieldOpsView: React.FC<FieldOpsViewProps> = ({
                   </button>
                 </div>
 
-                {/* Status Advancement */}
+                {/* Status Advancement: Assign to Field Crew */}
+                {(inc.status === 'NEW' || inc.status === 'VERIFIED') && (
+                  <button
+                    disabled={submittingId === inc.incident_id}
+                    onClick={() => handleAssignWork(inc.incident_id)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      backgroundColor: '#2563eb',
+                      color: '#ffffff',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>assignment_ind</span>
+                    <span>{submittingId === inc.incident_id ? 'Assigning...' : 'Assign to Field Crew'}</span>
+                  </button>
+                )}
+
+                {/* Status Advancement: Start Work */}
                 {inc.status === 'ASSIGNED' && (
                   <button
                     disabled={submittingId === inc.incident_id}
