@@ -134,36 +134,72 @@ def _run_scan_thread(job_id: str, bus_id: str, video_path: Path) -> None:
     def on_dispatch(count: int) -> None:
         job["events_dispatched"] = count
 
-    try:
-        from edge.runner import run as edge_run
+    # ── Watchdog: if edge runner hangs >30s with 0 dispatched events,
+    #    treat as a cloud VideoCapture hang and activate the fallback. ──────────
+    WATCHDOG_TIMEOUT = 30  # seconds
 
-        port = os.environ.get("PORT", "8000")
-        args = argparse.Namespace(
-            bus=bus_id,
-            video=str(video_path),
-            api=f"http://127.0.0.1:{port}/api/ingest",
-            no_preview=True,
-            dry_run=False,
-            model=None,
-            camera_id="FRONT",
-            no_vehicles=False,    # Keep vehicle detection active (cars/peds tracked + boxes drawn)
-            no_anpr=True,         # Disable ANPR OCR during quick scan
-            no_infra=True,        # Disable infra signs during quick scan
-            no_waterlog=False,
-            benchmark=False,
+    native_succeeded = threading.Event()
+    native_exception: list = []
+
+    def _native_target():
+        try:
+            from edge.runner import run as edge_run
+
+            port = os.environ.get("PORT", "8000")
+            args = argparse.Namespace(
+                bus=bus_id,
+                video=str(video_path),
+                api=f"http://127.0.0.1:{port}/api/ingest",
+                no_preview=True,
+                dry_run=False,
+                model=None,
+                camera_id="FRONT",
+                no_vehicles=False,
+                no_anpr=True,
+                no_infra=True,
+                no_waterlog=False,
+                benchmark=False,
+            )
+            print(f"[SCAN] Starting in-process edge runner for job {job_id}, bus {bus_id}", flush=True)
+            edge_run(args, frame_queue=fq, on_dispatch=on_dispatch)
+            native_succeeded.set()
+        except Exception as exc:
+            native_exception.append(exc)
+            native_succeeded.set()  # unblock watchdog
+
+    native_thread = threading.Thread(target=_native_target, daemon=True)
+    native_thread.start()
+
+    # Wait up to WATCHDOG_TIMEOUT for native runner to produce at least 1 event or finish
+    deadline = time.monotonic() + WATCHDOG_TIMEOUT
+    while time.monotonic() < deadline:
+        if native_succeeded.is_set():
+            break
+        if job.get("events_dispatched", 0) > 0:
+            # Native runner is working — wait for full completion
+            native_thread.join()
+            break
+        time.sleep(1)
+    else:
+        # Timeout hit with 0 events — runner is stuck (VideoCapture hang on cloud)
+        print(
+            f"[SCAN] Watchdog timeout after {WATCHDOG_TIMEOUT}s with 0 events. "
+            "Native runner appears stuck (cloud environment). Activating fallback.",
+            flush=True,
         )
+        native_exception.append(RuntimeError("Watchdog timeout: VideoCapture hang detected"))
 
-        print(f"[SCAN] Starting in-process edge runner for job {job_id}, bus {bus_id}", flush=True)
-        edge_run(args, frame_queue=fq, on_dispatch=on_dispatch)
-        job["status"] = "COMPLETED"
-        print(f"[SCAN] Job {job_id} COMPLETED. Events dispatched: {job.get('events_dispatched', 0)}", flush=True)
-    except Exception as exc:
-        print(f"[SCAN] Native edge runner unavailable or raised ({exc}). Activating resilient fallback pipeline.", flush=True)
-        _run_fallback_scan(job_id=job_id, bus_id=bus_id, video_path=video_path, fq=fq, on_dispatch=on_dispatch)
+    try:
+        if native_exception:
+            exc = native_exception[0]
+            print(f"[SCAN] Native edge runner failed ({exc}). Activating resilient fallback pipeline.", flush=True)
+            _run_fallback_scan(job_id=job_id, bus_id=bus_id, video_path=video_path, fq=fq, on_dispatch=on_dispatch)
+        elif native_succeeded.is_set() and not native_exception:
+            job["status"] = "COMPLETED"
+            print(f"[SCAN] Job {job_id} COMPLETED. Events dispatched: {job.get('events_dispatched', 0)}", flush=True)
     finally:
         if fq is not None:
             fq.put(None)  # Sentinel value signaling end of stream
-        # Clean up temporary uploaded video file
         try:
             if video_path.exists():
                 video_path.unlink()
