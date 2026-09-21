@@ -7,7 +7,7 @@ services:
     runtime: python
     plan: free
     region: oregon
-    buildCommand: pip install -r backend/requirements.txt
+    buildCommand: pip install -r backend/requirements.txt && pip uninstall -y opencv-python && pip install --force-reinstall --no-deps opencv-python-headless
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
