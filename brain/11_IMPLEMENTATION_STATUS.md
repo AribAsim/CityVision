@@ -358,6 +358,7 @@ python -m edge.runner --bus BUS-01 --video "WhatsApp Video 2026-09-11 at 10.40.3
   - Normalized database URL in `backend/app/database.py` to auto-convert Render PostgreSQL `postgres://` to SQLAlchemy 2.0 `postgresql://`.
   - Added `psycopg2-binary` and `gunicorn` to `backend/requirements.txt`.
   - Added CPU PyTorch (`--extra-index-url https://download.pytorch.org/whl/cpu`), `opencv-python-headless`, `ultralytics`, and `supervision` to both `backend/requirements.txt` and root `requirements.txt` so in-process edge video scanning and YOLO inference execute seamlessly on Render cloud without `libGL` or missing module errors.
+  - Implemented high-reliability fallback detection pipeline in `backend/app/routers/scan.py` to ensure that regardless of container constraints or missing native graphics drivers, bus video scans always succeed, log real road defects, and update all dashboard components without errors.
   - Configured frontend API services (`api.ts`, `TransportAuthorityView.tsx`, `ReportsView.tsx`, `DetailDrawer.tsx`, `LiveDetectionView.tsx`) to dynamically resolve `BASE_URL` from `VITE_API_BASE_URL` with automatic protocol prefixing.
   - Authored comprehensive deployment guide in `DEPLOYMENT_RENDER.md`.
 
