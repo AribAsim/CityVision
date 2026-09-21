@@ -6,7 +6,17 @@ services:
     runtime: python
     plan: free
     region: oregon
-    buildCommand: "npm --prefix frontend ci && npm --prefix frontend run build && pip install --upgrade pip && pip install -r backend/requirements.txt && pip uninstall -y opencv-python opencv-contrib-python || true && pip install --force-reinstall --no-deps opencv-python-headless"
+    buildCommand: |
+      # ── 1. Node / frontend build ──────────────────────────────────────────
+      curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+      apt-get install -y nodejs
+      cd frontend && npm ci && npm run build && cd ..
+      # ── 2. Python dependencies ────────────────────────────────────────────
+      pip install --upgrade pip
+      pip install -r backend/requirements.txt
+      # Ensure only the headless OpenCV variant is present (no libGL required)
+      pip uninstall -y opencv-python 2>/dev/null || true
+      pip install --force-reinstall --no-deps opencv-python-headless
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
@@ -14,3 +24,4 @@ services:
         value: "3.11.9"
       - key: DATABASE_URL
         value: sqlite:///./sih26124.db
+      # No CORS_ORIGINS needed – same origin (frontend + backend on one URL)
