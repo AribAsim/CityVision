@@ -1,38 +1,27 @@
 services:
-  # -------------------------------------------------------------------------
-  # 1. CityVision FastAPI Backend Web Service
-  # -------------------------------------------------------------------------
+  # Single unified web service – FastAPI serves the React SPA directly.
+  # This eliminates all cross-origin / "Failed to fetch" issues.
   - type: web
-    name: cityvision-backend
+    name: cityvision
     runtime: python
     plan: free
     region: oregon
-    buildCommand: pip install -r backend/requirements.txt && pip uninstall -y opencv-python && pip install --force-reinstall --no-deps opencv-python-headless
+    buildCommand: |
+      # ── 1. Node / frontend build ──────────────────────────────────────────
+      curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+      apt-get install -y nodejs
+      cd frontend && npm ci && npm run build && cd ..
+      # ── 2. Python dependencies ────────────────────────────────────────────
+      pip install --upgrade pip
+      pip install -r backend/requirements.txt
+      # Ensure only the headless OpenCV variant is present (no libGL required)
+      pip uninstall -y opencv-python opencv-contrib-python 2>/dev/null || true
+      pip install --force-reinstall --no-deps opencv-python-headless
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.9
-      - key: CORS_ORIGINS
-        value: "*"
+        value: "3.11.9"
       - key: DATABASE_URL
         value: sqlite:///./sih26124.db
-
-  # -------------------------------------------------------------------------
-  # 2. CityVision React Dashboard (Vite SPA) Static Site
-  # -------------------------------------------------------------------------
-  - type: web
-    name: cityvision-frontend
-    runtime: static
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: VITE_API_BASE_URL
-        fromService:
-          type: web
-          name: cityvision-backend
-          property: host
+      # No CORS_ORIGINS needed – same origin (frontend + backend on one URL)

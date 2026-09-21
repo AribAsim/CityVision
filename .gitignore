@@ -80,6 +80,7 @@ backend/static/snapshots/*
 .env
 .env.*
 !.env.example
+!.env.production
 secrets.toml
 
 # IDEs & System Files
